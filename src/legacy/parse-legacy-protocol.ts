@@ -1,7 +1,11 @@
 import { ConnectionContext } from '../server';
+// import { ConnectionHandler } from '../adapters/adapterInterface';
 import MessageTypes from '../message-types';
 
-export const parseLegacyProtocolMessage = (connectionContext: ConnectionContext, message: any) => {
+export const parseLegacyProtocolMessage = (
+  connectionContext: ConnectionContext,
+  message: any
+) => {
   let messageToReturn = message;
 
   switch (message.type) {
@@ -16,8 +20,8 @@ export const parseLegacyProtocolMessage = (connectionContext: ConnectionContext,
         payload: {
           query: message.query,
           operationName: message.operationName,
-          variables: message.variables,
-        },
+          variables: message.variables
+        }
       };
       break;
     case MessageTypes.SUBSCRIPTION_END:
@@ -31,8 +35,11 @@ export const parseLegacyProtocolMessage = (connectionContext: ConnectionContext,
     case MessageTypes.GQL_CONNECTION_ERROR:
       if (connectionContext.isLegacy) {
         messageToReturn = {
-          ...message, type: MessageTypes.INIT_FAIL,
-          payload: message.payload.message ? { error: message.payload.message } : message.payload,
+          ...message,
+          type: MessageTypes.INIT_FAIL,
+          payload: message.payload.message
+            ? { error: message.payload.message }
+            : message.payload
         };
       }
       break;
