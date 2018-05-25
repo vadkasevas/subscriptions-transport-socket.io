@@ -1,23 +1,27 @@
 import { IncomingMessage } from 'http';
 
+export enum State {
+  CONNECTING,
+  OPEN,
+  CLOSING,
+  CLOSED,
+}
+
 export type ConnectionHandler = (
-  socket: Socket,
-  request: IncomingMessage
+  socket: SocketAdapterInterface,
+  request: IncomingMessage,
 ) => void;
 
-export type Socket = {
+export type SocketAdapterInterface = {
   protocol: string;
-
+  state: State;
   close(code?: number, data?: string): void;
-
   on(event: string, connectionHandler: ConnectionHandler): void;
-
-  readyState: number;
-
+  emit(event: string | symbol, ...args: any[]): boolean;
   send(data: any, cb?: (err: Error) => void): void;
 };
 
-export type Adapter = {
+export type AdapterInterface = {
   on(event: string, connectionHandler: ConnectionHandler): void;
 
   removeListener(event: string, connectionHandler: ConnectionHandler): void;

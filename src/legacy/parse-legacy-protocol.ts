@@ -4,7 +4,7 @@ import MessageTypes from '../message-types';
 
 export const parseLegacyProtocolMessage = (
   connectionContext: ConnectionContext,
-  message: any
+  message: any,
 ) => {
   let messageToReturn = message;
 
@@ -20,8 +20,8 @@ export const parseLegacyProtocolMessage = (
         payload: {
           query: message.query,
           operationName: message.operationName,
-          variables: message.variables
-        }
+          variables: message.variables,
+        },
       };
       break;
     case MessageTypes.SUBSCRIPTION_END:
@@ -39,7 +39,7 @@ export const parseLegacyProtocolMessage = (
           type: MessageTypes.INIT_FAIL,
           payload: message.payload.message
             ? { error: message.payload.message }
-            : message.payload
+            : message.payload,
         };
       }
       break;

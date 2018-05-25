@@ -1,5 +1,3 @@
-import * as WebSocket from 'ws';
-
 import MessageTypes from './message-types';
 import { GRAPHQL_WS, GRAPHQL_SUBSCRIPTIONS } from './protocol';
 import isObject = require('lodash.isobject');
@@ -11,7 +9,7 @@ import {
   validate,
   ValidationContext,
   specifiedRules,
-  GraphQLFieldResolver
+  GraphQLFieldResolver,
 } from 'graphql';
 import { createEmptyIterable } from './utils/empty-iterable';
 import { createAsyncIterator, forAwaitEach, isAsyncIterable } from 'iterall';
@@ -19,7 +17,12 @@ import { isASubscriptionOperation } from './utils/is-subscriptions';
 import { parseLegacyProtocolMessage } from './legacy/parse-legacy-protocol';
 import { IncomingMessage } from 'http';
 
-import { Adapter, Socket } from './adapters/adapterInterface';
+import {
+  AdapterInterface,
+  SocketAdapterInterface,
+  State,
+} from './adapters/adapterInterface';
+import { WebsocketAdapter } from './adapters/ws';
 
 export type ExecutionIterator = AsyncIterator<ExecutionResult>;
 
@@ -36,7 +39,7 @@ export interface ExecutionParams<TContext = any> {
 export type ConnectionContext = {
   initPromise?: Promise<any>;
   isLegacy: boolean;
-  socket: Socket;
+  socket: SocketAdapterInterface;
   request: IncomingMessage;
   operations: {
     [opId: string]: ExecutionIterator;
@@ -63,7 +66,7 @@ export type ExecuteFunction = (
   contextValue?: any,
   variableValues?: { [key: string]: any },
   operationName?: string,
-  fieldResolver?: GraphQLFieldResolver<any, any>
+  fieldResolver?: GraphQLFieldResolver<any, any>,
 ) =>
   | ExecutionResult
   | Promise<ExecutionResult>
@@ -77,7 +80,7 @@ export type SubscribeFunction = (
   variableValues?: { [key: string]: any },
   operationName?: string,
   fieldResolver?: GraphQLFieldResolver<any, any>,
-  subscribeFieldResolver?: GraphQLFieldResolver<any, any>
+  subscribeFieldResolver?: GraphQLFieldResolver<any, any>,
 ) =>
   | AsyncIterator<ExecutionResult>
   | Promise<AsyncIterator<ExecutionResult> | ExecutionResult>;
@@ -102,7 +105,7 @@ export class SubscriptionServer {
   private onConnect: Function;
   private onDisconnect: Function;
 
-  private wsServer: Adapter;
+  private wsServer: AdapterInterface;
   private execute: ExecuteFunction;
   private subscribe: SubscribeFunction;
   private schema: GraphQLSchema;
@@ -111,17 +114,17 @@ export class SubscriptionServer {
   private closeHandler: () => void;
   private specifiedRules: Array<(context: ValidationContext) => any>;
 
-  public static create(options: ServerOptions, adapter: Adapter) {
-    return new SubscriptionServer(options, adapter);
+  public static create(options: ServerOptions, socketOptions: any) {
+    return new SubscriptionServer(options, socketOptions);
   }
 
-  constructor(options: ServerOptions, adapter: Adapter) {
+  constructor(options: ServerOptions, socketOptions: any) {
     const {
       onOperation,
       onOperationComplete,
       onConnect,
       onDisconnect,
-      keepAlive
+      keepAlive,
     } = options;
 
     this.specifiedRules = options.validationRules || specifiedRules;
@@ -134,9 +137,12 @@ export class SubscriptionServer {
     this.keepAlive = keepAlive;
 
     // Init and connect websocket server to http
-    this.wsServer = adapter;
+    this.wsServer = new WebsocketAdapter(socketOptions);
 
-    const connectionHandler = (socket: Socket, request: IncomingMessage) => {
+    const connectionHandler = (
+      socket: SocketAdapterInterface,
+      request: IncomingMessage,
+    ) => {
       // Add `upgradeReq` to the socket object to support old API, without creating a memory leak
       // See: https://github.com/websockets/ws/pull/1099
       (socket as any).upgradeReq = request;
@@ -167,7 +173,7 @@ export class SubscriptionServer {
             connectionContext,
             '',
             { message: error.message ? error.message : error },
-            MessageTypes.GQL_CONNECTION_ERROR
+            MessageTypes.GQL_CONNECTION_ERROR,
           );
 
           setTimeout(() => {
@@ -194,7 +200,7 @@ export class SubscriptionServer {
     };
   }
 
-  public get server(): Adapter {
+  public get server(): AdapterInterface {
     return this.wsServer;
   }
 
@@ -207,7 +213,7 @@ export class SubscriptionServer {
 
     if (!execute) {
       throw new Error(
-        'Must provide `execute` for websocket server constructor.'
+        'Must provide `execute` for websocket server constructor.',
       );
     }
 
@@ -247,14 +253,14 @@ export class SubscriptionServer {
       try {
         parsedMessage = parseLegacyProtocolMessage(
           connectionContext,
-          JSON.parse(message)
+          JSON.parse(message),
         );
       } catch (e) {
         this.sendError(
           connectionContext,
           null,
           { message: e.message },
-          MessageTypes.GQL_CONNECTION_ERROR
+          MessageTypes.GQL_CONNECTION_ERROR,
         );
         return;
       }
@@ -271,8 +277,8 @@ export class SubscriptionServer {
                   this.onConnect(
                     parsedMessage.payload,
                     connectionContext.socket,
-                    connectionContext
-                  )
+                    connectionContext,
+                  ),
                 );
               } catch (e) {
                 reject(e);
@@ -290,14 +296,14 @@ export class SubscriptionServer {
                 connectionContext,
                 undefined,
                 MessageTypes.GQL_CONNECTION_ACK,
-                undefined
+                undefined,
               );
 
               if (this.keepAlive) {
                 this.sendKeepAlive(connectionContext);
                 // Regular keep alive messages if keepAlive is set
                 const keepAliveTimer = setInterval(() => {
-                  if (connectionContext.socket.readyState === WebSocket.OPEN) {
+                  if (connectionContext.socket.state === State.OPEN) {
                     this.sendKeepAlive(connectionContext);
                   } else {
                     clearInterval(keepAliveTimer);
@@ -310,7 +316,7 @@ export class SubscriptionServer {
                 connectionContext,
                 opId,
                 { message: error.message },
-                MessageTypes.GQL_CONNECTION_ERROR
+                MessageTypes.GQL_CONNECTION_ERROR,
               );
 
               // Close the connection with an error code, ws v2 ensures that the
@@ -346,12 +352,12 @@ export class SubscriptionServer {
                 context: isObject(initResult)
                   ? Object.assign(
                       Object.create(Object.getPrototypeOf(initResult)),
-                      initResult
+                      initResult,
                     )
                   : {},
                 formatResponse: <any>undefined,
                 formatError: <any>undefined,
-                callback: <any>undefined
+                callback: <any>undefined,
               };
               let promisedParams = Promise.resolve(baseParams);
 
@@ -364,8 +370,8 @@ export class SubscriptionServer {
                   this.onOperation(
                     messageForCallback,
                     baseParams,
-                    connectionContext.socket
-                  )
+                    connectionContext.socket,
+                  ),
                 );
               }
 
@@ -388,12 +394,12 @@ export class SubscriptionServer {
                   const validationErrors = validate(
                     this.schema,
                     document,
-                    this.specifiedRules
+                    this.specifiedRules,
                   );
 
                   if (validationErrors.length > 0) {
                     executionPromise = Promise.resolve({
-                      errors: validationErrors
+                      errors: validationErrors,
                     });
                   } else {
                     let executor: SubscribeFunction | ExecuteFunction = this
@@ -411,8 +417,8 @@ export class SubscriptionServer {
                         this.rootValue,
                         params.context,
                         params.variables,
-                        params.operationName
-                      )
+                        params.operationName,
+                      ),
                     );
                   }
 
@@ -420,7 +426,7 @@ export class SubscriptionServer {
                     executionIterable: isAsyncIterable(executionResult)
                       ? executionResult
                       : createAsyncIterator([executionResult]),
-                    params
+                    params,
                   }));
                 })
                 .then(({ executionIterable, params }) => {
@@ -441,16 +447,16 @@ export class SubscriptionServer {
                         connectionContext,
                         opId,
                         MessageTypes.GQL_DATA,
-                        result
+                        result,
                       );
-                    }
+                    },
                   )
                     .then(() => {
                       this.sendMessage(
                         connectionContext,
                         opId,
                         MessageTypes.GQL_COMPLETE,
-                        null
+                        null,
                       );
                     })
                     .catch((e: Error) => {
@@ -484,7 +490,7 @@ export class SubscriptionServer {
                     connectionContext,
                     opId,
                     MessageTypes.SUBSCRIPTION_SUCCESS,
-                    undefined
+                    undefined,
                   );
                 })
                 .catch((e: any) => {
@@ -493,11 +499,11 @@ export class SubscriptionServer {
                       connectionContext,
                       opId,
                       MessageTypes.GQL_DATA,
-                      { errors: e.errors }
+                      { errors: e.errors },
                     );
                   } else {
                     this.sendError(connectionContext, opId, {
-                      message: e.message
+                      message: e.message,
                     });
                   }
 
@@ -510,7 +516,7 @@ export class SubscriptionServer {
             .catch(error => {
               // Handle initPromise rejected
               this.sendError(connectionContext, opId, {
-                message: error.message
+                message: error.message,
               });
               this.unsubscribe(connectionContext, opId);
             });
@@ -523,7 +529,7 @@ export class SubscriptionServer {
 
         default:
           this.sendError(connectionContext, opId, {
-            message: 'Invalid message type!'
+            message: 'Invalid message type!',
           });
       }
     };
@@ -535,14 +541,14 @@ export class SubscriptionServer {
         connectionContext,
         undefined,
         MessageTypes.KEEP_ALIVE,
-        undefined
+        undefined,
       );
     } else {
       this.sendMessage(
         connectionContext,
         undefined,
         MessageTypes.GQL_CONNECTION_KEEP_ALIVE,
-        undefined
+        undefined,
       );
     }
   }
@@ -551,18 +557,15 @@ export class SubscriptionServer {
     connectionContext: ConnectionContext,
     opId: string,
     type: string,
-    payload: any
+    payload: any,
   ): void {
     const parsedMessage = parseLegacyProtocolMessage(connectionContext, {
       type,
       id: opId,
-      payload
+      payload,
     });
 
-    if (
-      parsedMessage &&
-      connectionContext.socket.readyState === WebSocket.OPEN
-    ) {
+    if (parsedMessage && connectionContext.socket.state === State.OPEN) {
       connectionContext.socket.send(JSON.stringify(parsedMessage));
     }
   }
@@ -571,18 +574,18 @@ export class SubscriptionServer {
     connectionContext: ConnectionContext,
     opId: string,
     errorPayload: any,
-    overrideDefaultErrorType?: string
+    overrideDefaultErrorType?: string,
   ): void {
     const sanitizedOverrideDefaultErrorType =
       overrideDefaultErrorType || MessageTypes.GQL_ERROR;
     if (
       [MessageTypes.GQL_CONNECTION_ERROR, MessageTypes.GQL_ERROR].indexOf(
-        sanitizedOverrideDefaultErrorType
+        sanitizedOverrideDefaultErrorType,
       ) === -1
     ) {
       throw new Error(
         'overrideDefaultErrorType should be one of the allowed error messages' +
-          ' GQL_CONNECTION_ERROR or GQL_ERROR'
+          ' GQL_CONNECTION_ERROR or GQL_ERROR',
       );
     }
 
@@ -590,7 +593,7 @@ export class SubscriptionServer {
       connectionContext,
       opId,
       sanitizedOverrideDefaultErrorType,
-      errorPayload
+      errorPayload,
     );
   }
 }
