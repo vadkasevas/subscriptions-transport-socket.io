@@ -114,8 +114,12 @@ export class SubscriptionServer {
   private closeHandler: () => void;
   private specifiedRules: Array<(context: ValidationContext) => any>;
 
-  public static create(options: ServerOptions, socketOptions: any) {
-    return new SubscriptionServer(options, socketOptions);
+  public static create(
+    options: ServerOptions,
+    socketOptions: any,
+    websocketLibrary: string = 'ws',
+  ) {
+    return new SubscriptionServer(options, socketOptions, websocketLibrary);
   }
 
   constructor(
@@ -268,6 +272,8 @@ export class SubscriptionServer {
         );
         return;
       }
+
+      console.log('Server send message', parsedMessage);
 
       const opId = parsedMessage.id;
       switch (parsedMessage.type) {

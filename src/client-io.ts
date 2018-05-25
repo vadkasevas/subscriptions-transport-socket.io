@@ -1,12 +1,4 @@
-declare let window: any;
-const _global =
-  typeof global !== 'undefined'
-    ? global
-    : typeof window !== 'undefined'
-      ? window
-      : {};
-const NativeWebSocket = _global.WebSocket || _global.MozWebSocket;
-
+import * as io from 'socket.io-client';
 import * as Backoff from 'backo2';
 import { EventEmitter, ListenerFn } from 'eventemitter3';
 import isString = require('lodash.isstring');
@@ -17,7 +9,6 @@ import { DocumentNode } from 'graphql/language/ast';
 import { getOperationAST } from 'graphql/utilities/getOperationAST';
 import $$observable from 'symbol-observable';
 
-import { GRAPHQL_WS } from './protocol';
 import { WS_TIMEOUT } from './defaults';
 import MessageTypes from './message-types';
 
@@ -76,7 +67,7 @@ export interface ClientOptions {
 }
 
 export class SubscriptionClient {
-  public client: any;
+  public client: SocketIOClient.Socket;
   public operations: Operations;
   private url: string;
   private nextOperationId: number;
@@ -93,7 +84,7 @@ export class SubscriptionClient {
   private inactivityTimeout: number;
   private inactivityTimeoutId: any;
   private closedByUser: boolean;
-  private wsImpl: any;
+  // private wsImpl: SocketIOClientStatic;
   private wasKeepAliveReceived: boolean;
   private tryReconnectTimeoutId: any;
   private checkConnectionIntervalId: any;
@@ -112,15 +103,15 @@ export class SubscriptionClient {
       inactivityTimeout = 0,
     } =
       options || {};
-    console.log('options', options);
+    console.log('Options', options);
 
-    this.wsImpl = webSocketImpl || NativeWebSocket;
+    // this.wsImpl = io;
 
-    if (!this.wsImpl) {
-      throw new Error(
-        'Unable to find native implementation, or alternative implementation for WebSocket!',
-      );
-    }
+    // if (!this.wsImpl) {
+    //   throw new Error(
+    //     'Unable to find native implementation, or alternative implementation for WebSocket!',
+    //   );
+    // }
 
     this.connectionParams = connectionParams;
     this.connectionCallback = connectionCallback;
@@ -148,10 +139,10 @@ export class SubscriptionClient {
 
   public get status() {
     if (this.client === null) {
-      return this.wsImpl.CLOSED;
+      return 'DISCONNECTED';
     }
 
-    return this.client.readyState;
+    return this.client.connected ? 'OPEN' : 'CONNECTING';
   }
 
   public close(isForced = true, closedByUser = true) {
@@ -204,6 +195,8 @@ export class SubscriptionClient {
         const observer = getObserver(observerOrNext, onError, onComplete);
 
         opId = executeOperation(request, (error: Error[], result: any) => {
+          console.log('result', result);
+
           if (error === null && result === null) {
             if (observer.complete) {
               observer.complete();
@@ -214,6 +207,7 @@ export class SubscriptionClient {
             }
           } else {
             if (observer.next) {
+              console.log('next', result);
               observer.next(result);
             }
           }
@@ -232,15 +226,15 @@ export class SubscriptionClient {
   }
 
   public on(eventName: string, callback: ListenerFn, context?: any): Function {
-    const handler = this.eventEmitter.on(eventName, callback, context);
+    const handler = this.client.on(eventName, callback);
 
     return () => {
-      handler.off(eventName, callback, context);
+      handler.off(eventName, callback);
     };
   }
 
   public onConnected(callback: ListenerFn, context?: any): Function {
-    return this.on('connected', callback, context);
+    return this.on('connect', callback, context);
   }
 
   public onConnecting(callback: ListenerFn, context?: any): Function {
@@ -248,11 +242,11 @@ export class SubscriptionClient {
   }
 
   public onDisconnected(callback: ListenerFn, context?: any): Function {
-    return this.on('disconnected', callback, context);
+    return this.on('disconnect', callback, context);
   }
 
   public onReconnected(callback: ListenerFn, context?: any): Function {
-    return this.on('reconnected', callback, context);
+    return this.on('reconnect', callback, context);
   }
 
   public onReconnecting(callback: ListenerFn, context?: any): Function {
@@ -481,26 +475,25 @@ export class SubscriptionClient {
   // send message, or queue it if connection is not open
   private sendMessageRaw(message: Object) {
     switch (this.status) {
-      case this.wsImpl.OPEN:
-        let serializedMessage: string = JSON.stringify(message);
+      case 'OPEN':
+        const serializedMessage = JSON.stringify(message);
         try {
           JSON.parse(serializedMessage);
         } catch (e) {
           throw new Error(`Message must be JSON-serializable. Got: ${message}`);
         }
 
-        this.client.send(serializedMessage);
+        this.client.emit('message', serializedMessage);
         break;
-      case this.wsImpl.CONNECTING:
+      case 'CONNECTING':
         this.unsentMessagesQueue.push(message);
 
         break;
       default:
         if (!this.reconnecting) {
           throw new Error(
-            'A message was not sent because socket is not connected, is closing or ' +
-              'is already closed. Message was: ' +
-              JSON.stringify(message),
+            `${'A message was not sent because socket is not connected, is closing or ' +
+              'is already closed. Message was: '}${JSON.stringify(message)}`,
           );
         }
     }
@@ -559,18 +552,21 @@ export class SubscriptionClient {
 
     // Max timeout trying to connect
     this.maxConnectTimeoutId = setTimeout(() => {
-      if (this.status !== this.wsImpl.OPEN) {
+      if (!this.client.connected) {
         this.close(false, true);
       }
     }, this.maxConnectTimeGenerator.duration());
   }
 
   private connect() {
-    this.client = new this.wsImpl(this.url, GRAPHQL_WS);
+    this.client = io(this.url, {
+      transports: ['websocket'],
+      forceNew: true,
+    });
 
     this.checkMaxConnectTimeout();
 
-    this.client.onopen = () => {
+    this.client.on('connect', () => {
       this.clearMaxConnectTimeout();
       this.closedByUser = false;
       this.eventEmitter.emit(this.reconnecting ? 'reconnecting' : 'connecting');
@@ -583,23 +579,24 @@ export class SubscriptionClient {
       // Send CONNECTION_INIT message, no need to wait for connection to success (reduce roundtrips)
       this.sendMessage(undefined, MessageTypes.GQL_CONNECTION_INIT, payload);
       this.flushUnsentMessagesQueue();
-    };
+    });
 
-    this.client.onclose = () => {
+    this.client.on('disconnect', () => {
       if (!this.closedByUser) {
         this.close(false, false);
       }
-    };
+    });
 
-    this.client.onerror = (err: Error) => {
+    this.client.on('error', (err: Error) => {
       // Capture and ignore errors to prevent unhandled exceptions, wait for
       // onclose to fire before attempting a reconnect.
       this.eventEmitter.emit('error', err);
-    };
+    });
 
-    this.client.onmessage = ({ data }: { data: any }) => {
+    this.client.on('message', (data: any) => {
+      console.log('Client got message:', data);
       this.processReceivedData(data);
-    };
+    });
   }
 
   private processReceivedData(receivedData: any) {
