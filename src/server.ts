@@ -22,7 +22,7 @@ import {
   SocketAdapterInterface,
   State,
 } from './adapters/adapterInterface';
-import { WebsocketAdapter } from './adapters/ws';
+import { WebsocketAdapter } from './adapters/websocketAdapter';
 
 export type ExecutionIterator = AsyncIterator<ExecutionResult>;
 
@@ -118,7 +118,11 @@ export class SubscriptionServer {
     return new SubscriptionServer(options, socketOptions);
   }
 
-  constructor(options: ServerOptions, socketOptions: any) {
+  constructor(
+    options: ServerOptions,
+    socketOptions: any,
+    websocketLibrary: string = 'ws',
+  ) {
     const {
       onOperation,
       onOperationComplete,
@@ -137,7 +141,7 @@ export class SubscriptionServer {
     this.keepAlive = keepAlive;
 
     // Init and connect websocket server to http
-    this.wsServer = new WebsocketAdapter(socketOptions);
+    this.wsServer = new WebsocketAdapter(websocketLibrary, socketOptions);
 
     const connectionHandler = (
       socket: SocketAdapterInterface,

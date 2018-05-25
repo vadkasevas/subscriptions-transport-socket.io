@@ -49,7 +49,7 @@ class SocketAdapter implements SocketAdapterInterface {
   }
 }
 
-export class WebsocketAdapter implements AdapterInterface {
+export class WSAdapter implements AdapterInterface {
   private wsServer: WebSocket.Server;
 
   constructor(options?: any) {
