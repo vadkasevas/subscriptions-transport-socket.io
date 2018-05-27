@@ -273,8 +273,6 @@ export class SubscriptionServer {
         return;
       }
 
-      console.log('Server send message', parsedMessage);
-
       const opId = parsedMessage.id;
       switch (parsedMessage.type) {
         case MessageTypes.GQL_CONNECTION_INIT:

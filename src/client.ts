@@ -1,12 +1,3 @@
-declare let window: any;
-const _global =
-  typeof global !== 'undefined'
-    ? global
-    : typeof window !== 'undefined'
-      ? window
-      : {};
-const NativeWebSocket = _global.WebSocket || _global.MozWebSocket;
-
 import * as Backoff from 'backo2';
 import { EventEmitter, ListenerFn } from 'eventemitter3';
 import isString = require('lodash.isstring');
@@ -20,6 +11,7 @@ import $$observable from 'symbol-observable';
 import { GRAPHQL_WS } from './protocol';
 import { WS_TIMEOUT } from './defaults';
 import MessageTypes from './message-types';
+import { ClientAdapter, ReadyState } from './client-adapters/clientAdapter';
 
 export interface Observer<T> {
   next?: (value: T) => void;
@@ -76,7 +68,7 @@ export interface ClientOptions {
 }
 
 export class SubscriptionClient {
-  public client: any;
+  public client: ClientAdapter;
   public operations: Operations;
   private url: string;
   private nextOperationId: number;
@@ -93,7 +85,7 @@ export class SubscriptionClient {
   private inactivityTimeout: number;
   private inactivityTimeoutId: any;
   private closedByUser: boolean;
-  private wsImpl: any;
+  private wsImpl: typeof ClientAdapter;
   private wasKeepAliveReceived: boolean;
   private tryReconnectTimeoutId: any;
   private checkConnectionIntervalId: any;
@@ -112,9 +104,9 @@ export class SubscriptionClient {
       inactivityTimeout = 0,
     } =
       options || {};
-    console.log('options', options);
 
-    this.wsImpl = webSocketImpl || NativeWebSocket;
+    // this.wsImpl = webSocketImpl || NativeWebSocket;
+    this.wsImpl = webSocketImpl || ClientAdapter;
 
     if (!this.wsImpl) {
       throw new Error(
@@ -148,7 +140,7 @@ export class SubscriptionClient {
 
   public get status() {
     if (this.client === null) {
-      return this.wsImpl.CLOSED;
+      return ReadyState.CLOSED;
     }
 
     return this.client.readyState;
@@ -481,7 +473,7 @@ export class SubscriptionClient {
   // send message, or queue it if connection is not open
   private sendMessageRaw(message: Object) {
     switch (this.status) {
-      case this.wsImpl.OPEN:
+      case ReadyState.OPEN:
         let serializedMessage: string = JSON.stringify(message);
         try {
           JSON.parse(serializedMessage);
@@ -491,7 +483,7 @@ export class SubscriptionClient {
 
         this.client.send(serializedMessage);
         break;
-      case this.wsImpl.CONNECTING:
+      case ReadyState.CONNECTING:
         this.unsentMessagesQueue.push(message);
 
         break;
@@ -559,7 +551,7 @@ export class SubscriptionClient {
 
     // Max timeout trying to connect
     this.maxConnectTimeoutId = setTimeout(() => {
-      if (this.status !== this.wsImpl.OPEN) {
+      if (this.status !== ReadyState.OPEN) {
         this.close(false, true);
       }
     }, this.maxConnectTimeGenerator.duration());

@@ -26,6 +26,7 @@ import { SubscriptionServer, ExecutionParams } from '../server';
 import { SubscriptionClient } from '../client';
 import { OperationMessage } from '../server';
 import { $$asyncIterator } from 'iterall';
+import { ReadyState } from '../client-adapters/clientAdapter';
 
 const TEST_PORT = 4953;
 const KEEP_ALIVE_TEST_PORT = TEST_PORT + 1;
@@ -301,7 +302,6 @@ describe('Client', function() {
     const client = new SubscriptionClient(`ws://localhost:${RAW_TEST_PORT}/`);
     wsServer.on('connection', (connection: any) => {
       connection.on('message', (message: any) => {
-        console.log('Client send: ', message);
         const parsedMessage = JSON.parse(message);
         // mock server
         if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
@@ -724,7 +724,6 @@ describe('Client', function() {
 
       setTimeout(() => {
         testPubsub.publish('user', {});
-        console.log('testPubSub',testPubsub);
       }, 100);
     });
   });
@@ -1197,9 +1196,7 @@ describe('Client', function() {
 
     setTimeout(() => {
       expect(checkConnectionSpy.callCount).to.be.equal(receivedKeepAlive);
-      expect(subscriptionsClient.status).to.be.equal(
-        subscriptionsClient.client.OPEN,
-      );
+      expect(subscriptionsClient.status).to.be.equal(ReadyState.OPEN);
       done();
     }, 1300);
   });
