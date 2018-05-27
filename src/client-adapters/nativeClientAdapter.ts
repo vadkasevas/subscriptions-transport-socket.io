@@ -7,14 +7,9 @@ const _global =
       : {};
 const NativeWebSocket = _global.WebSocket || _global.MozWebSocket;
 
-export enum ReadyState {
-  CONNECTING = 0,
-  OPEN = 1,
-  CLOSING = 2,
-  CLOSED = 3,
-}
+import { IClientAdapter, ReadyState } from './clientAdapterInterface';
 
-export class ClientAdapter {
+export class NativeClientAdapter implements IClientAdapter {
   private client: any;
 
   constructor(url: string, protocol: string) {

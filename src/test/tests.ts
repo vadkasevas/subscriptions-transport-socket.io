@@ -26,7 +26,7 @@ import { SubscriptionServer, ExecutionParams } from '../server';
 import { SubscriptionClient } from '../client';
 import { OperationMessage } from '../server';
 import { $$asyncIterator } from 'iterall';
-import { ReadyState } from '../client-adapters/clientAdapter';
+import { ReadyState } from '../client-adapters/clientAdapterInterface';
 
 const TEST_PORT = 4953;
 const KEEP_ALIVE_TEST_PORT = TEST_PORT + 1;

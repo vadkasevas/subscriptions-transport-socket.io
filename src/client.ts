@@ -11,7 +11,12 @@ import $$observable from 'symbol-observable';
 import { GRAPHQL_WS } from './protocol';
 import { WS_TIMEOUT } from './defaults';
 import MessageTypes from './message-types';
-import { ClientAdapter, ReadyState } from './client-adapters/clientAdapter';
+import { NativeClientAdapter } from './client-adapters/nativeClientAdapter';
+import {
+  IClientAdapter,
+  ReadyState,
+  IClientAdaterConstructor,
+} from './client-adapters/clientAdapterInterface';
 
 export interface Observer<T> {
   next?: (value: T) => void;
@@ -68,7 +73,7 @@ export interface ClientOptions {
 }
 
 export class SubscriptionClient {
-  public client: ClientAdapter;
+  public client: IClientAdapter;
   public operations: Operations;
   private url: string;
   private nextOperationId: number;
@@ -85,7 +90,7 @@ export class SubscriptionClient {
   private inactivityTimeout: number;
   private inactivityTimeoutId: any;
   private closedByUser: boolean;
-  private wsImpl: typeof ClientAdapter;
+  private wsImpl: IClientAdaterConstructor;
   private wasKeepAliveReceived: boolean;
   private tryReconnectTimeoutId: any;
   private checkConnectionIntervalId: any;
@@ -106,7 +111,7 @@ export class SubscriptionClient {
       options || {};
 
     // this.wsImpl = webSocketImpl || NativeWebSocket;
-    this.wsImpl = webSocketImpl || ClientAdapter;
+    this.wsImpl = webSocketImpl || NativeClientAdapter;
 
     if (!this.wsImpl) {
       throw new Error(
