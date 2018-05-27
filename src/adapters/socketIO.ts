@@ -7,6 +7,7 @@ import {
   SocketAdapterInterface,
   State,
 } from './adapterInterface';
+import { GRAPHQL_WS } from '..';
 
 class SocketAdapter implements SocketAdapterInterface {
   private _socket: io.Socket;
@@ -16,7 +17,7 @@ class SocketAdapter implements SocketAdapterInterface {
   }
 
   public get protocol() {
-    return undefined as string;
+    return GRAPHQL_WS;
   }
 
   public get state() {

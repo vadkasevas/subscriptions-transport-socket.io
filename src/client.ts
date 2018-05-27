@@ -12,6 +12,7 @@ import { GRAPHQL_WS } from './protocol';
 import { WS_TIMEOUT } from './defaults';
 import MessageTypes from './message-types';
 import { NativeClientAdapter } from './client-adapters/nativeClientAdapter';
+import { SocketIOClientAdapter } from './client-adapters/socketIOClientAdapter';
 import {
   IClientAdapter,
   ReadyState,
@@ -110,8 +111,8 @@ export class SubscriptionClient {
     } =
       options || {};
 
-    // this.wsImpl = webSocketImpl || NativeWebSocket;
-    this.wsImpl = webSocketImpl || NativeClientAdapter;
+    // this.wsImpl = webSocketImpl || NativeClientAdapter;
+    this.wsImpl = webSocketImpl || SocketIOClientAdapter;
 
     if (!this.wsImpl) {
       throw new Error(
@@ -594,9 +595,15 @@ export class SubscriptionClient {
       this.eventEmitter.emit('error', err);
     };
 
-    this.client.onmessage = ({ data }: { data: any }) => {
-      this.processReceivedData(data);
-    };
+    if (this.client instanceof SocketIOClientAdapter) {
+      this.client.onmessage = (message: any) => {
+        this.processReceivedData(message);
+      };
+    } else {
+      this.client.onmessage = ({ data }: { data: any }) => {
+        this.processReceivedData(data);
+      };
+    }
   }
 
   private processReceivedData(receivedData: any) {

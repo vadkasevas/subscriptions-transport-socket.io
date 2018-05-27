@@ -117,7 +117,7 @@ export class SubscriptionServer {
   public static create(
     options: ServerOptions,
     socketOptions: any,
-    websocketLibrary: string = 'ws',
+    websocketLibrary: string = 'io',
   ) {
     return new SubscriptionServer(options, socketOptions, websocketLibrary);
   }
@@ -125,7 +125,7 @@ export class SubscriptionServer {
   constructor(
     options: ServerOptions,
     socketOptions: any,
-    websocketLibrary: string = 'ws',
+    websocketLibrary: string = 'io',
   ) {
     const {
       onOperation,
