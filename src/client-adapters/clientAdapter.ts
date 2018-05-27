@@ -7,17 +7,6 @@ const _global =
       : {};
 const NativeWebSocket = _global.WebSocket || _global.MozWebSocket;
 
-// export interface IClientAdapter {
-//   CONNECTING: number;
-//   readyState: number;
-//   close(): void;
-//   send(data: string): void;
-//   onopen(event: any): void;
-//   onclose(event: any): void;
-//   onerror(event: any): void;
-//   onmessage(message: any): void;
-// }
-
 export enum ReadyState {
   CONNECTING = 0,
   OPEN = 1,
