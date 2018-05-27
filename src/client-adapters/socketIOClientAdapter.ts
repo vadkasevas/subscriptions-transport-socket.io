@@ -12,11 +12,16 @@ export class SocketIOClientAdapter implements IClientAdapter {
   }
 
   public get readyState() {
-    if (this.socket.connected) {
-      return ReadyState.OPEN;
+    switch (this.socket.io.readyState) {
+      case 'opening':
+        return ReadyState.CONNECTING;
+      case 'open':
+        return ReadyState.OPEN;
+      case 'closing':
+        return ReadyState.CLOSING;
+      default:
+        return ReadyState.CLOSED;
     }
-
-    return ReadyState.CONNECTING;
   }
 
   public close() {

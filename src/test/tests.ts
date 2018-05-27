@@ -726,323 +726,323 @@ describe('Client', function() {
     });
   });
 
-  //   it('queues messages while websocket is still connecting', function(done) {
-  //     const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+  it('queues messages while websocket is still connecting', function(done) {
+    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
 
-  //     let sub = client
-  //       .request({
-  //         query: `subscription useInfo($id: String) {
-  //         user(id: $id) {
-  //           id
-  //           name
-  //         }
-  //       }`,
-  //         operationName: 'useInfo',
-  //         variables: {
-  //           id: 3,
-  //         },
-  //       })
-  //       .subscribe({});
+    let sub = client
+      .request({
+        query: `subscription useInfo($id: String) {
+          user(id: $id) {
+            id
+            name
+          }
+        }`,
+        operationName: 'useInfo',
+        variables: {
+          id: 3,
+        },
+      })
+      .subscribe({});
 
-  //     client.onConnecting(() => {
-  //       expect((client as any).unsentMessagesQueue.length).to.equals(1);
-  //       sub.unsubscribe();
+    client.onConnecting(() => {
+      expect((client as any).unsentMessagesQueue.length).to.equals(1);
+      sub.unsubscribe();
 
-  //       setTimeout(() => {
-  //         expect((client as any).unsentMessagesQueue.length).to.equals(0);
-  //         done();
-  //       }, 100);
-  //     });
-  //   });
+      setTimeout(() => {
+        expect((client as any).unsentMessagesQueue.length).to.equals(0);
+        done();
+      }, 100);
+    });
+  });
 
-  //   it('should call error handler when graphql result has errors', function(done) {
-  //     const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+  it('should call error handler when graphql result has errors', function(done) {
+    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
 
-  //     setTimeout(() => {
-  //       client
-  //         .request({
-  //           query: `subscription useInfo{
-  //           error
-  //         }`,
-  //           variables: {},
-  //         })
-  //         .subscribe({
-  //           next: (result: any) => {
-  //             if (result.errors.length) {
-  //               client.unsubscribeAll();
-  //               done();
-  //             }
+    setTimeout(() => {
+      client
+        .request({
+          query: `subscription useInfo{
+            error
+          }`,
+          variables: {},
+        })
+        .subscribe({
+          next: (result: any) => {
+            if (result.errors.length) {
+              client.unsubscribeAll();
+              done();
+            }
 
-  //             if (result) {
-  //               client.unsubscribeAll();
-  //               assert(false);
-  //             }
-  //           },
-  //         });
-  //     }, 100);
+            if (result) {
+              client.unsubscribeAll();
+              assert(false);
+            }
+          },
+        });
+    }, 100);
 
-  //     setTimeout(() => {
-  //       testPubsub.publish('error', {});
-  //     }, 200);
-  //   });
+    setTimeout(() => {
+      testPubsub.publish('error', {});
+    }, 200);
+  });
 
-  //   it('should call error handler when graphql query is not valid', function(done) {
-  //     const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+  it('should call error handler when graphql query is not valid', function(done) {
+    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
 
-  //     setTimeout(() => {
-  //       client
-  //         .request({
-  //           query: `subscription useInfo{
-  //           invalid
-  //         }`,
-  //           variables: {},
-  //         })
-  //         .subscribe({
-  //           next: (result: any) => {
-  //             if (result.errors.length) {
-  //               expect(result.errors[0].message).to.equals(
-  //                 'Cannot query field "invalid" on type "Subscription".',
-  //               );
-  //               done();
-  //             } else {
-  //               assert(false);
-  //             }
-  //           },
-  //         });
-  //     }, 100);
-  //   });
+    setTimeout(() => {
+      client
+        .request({
+          query: `subscription useInfo{
+            invalid
+          }`,
+          variables: {},
+        })
+        .subscribe({
+          next: (result: any) => {
+            if (result.errors.length) {
+              expect(result.errors[0].message).to.equals(
+                'Cannot query field "invalid" on type "Subscription".',
+              );
+              done();
+            } else {
+              assert(false);
+            }
+          },
+        });
+    }, 100);
+  });
 
-  //   function testBadServer(payload: any, errorMessage: string, done: Function) {
-  //     wsServer.on('connection', (connection: WebSocket) => {
-  //       connection.on('message', (message: any) => {
-  //         const parsedMessage = JSON.parse(message);
-  //         if (parsedMessage.type === MessageTypes.GQL_START) {
-  //           connection.send(
-  //             JSON.stringify({
-  //               type: MessageTypes.GQL_ERROR,
-  //               id: parsedMessage.id,
-  //               payload,
-  //             }),
-  //           );
-  //         }
-  //       });
-  //     });
+  function testBadServer(payload: any, errorMessage: string, done: Function) {
+    wsServer.on('connection', (connection: SocketIOClient.Socket) => {
+      connection.on('message', (message: any) => {
+        const parsedMessage = JSON.parse(message);
+        if (parsedMessage.type === MessageTypes.GQL_START) {
+          connection.send(
+            JSON.stringify({
+              type: MessageTypes.GQL_ERROR,
+              id: parsedMessage.id,
+              payload,
+            }),
+          );
+        }
+      });
+    });
 
-  //     const client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`);
-  //     client
-  //       .request({
-  //         query: `
-  //         subscription useInfo{
-  //           invalid
-  //         }
-  //       `,
-  //         variables: {},
-  //       })
-  //       .subscribe({
-  //         next: () => assert(false),
-  //         error: error => {
-  //           expect(error.message).to.equals(errorMessage);
-  //           done();
-  //         },
-  //       });
-  //   }
+    const client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`);
+    client
+      .request({
+        query: `
+          subscription useInfo{
+            invalid
+          }
+        `,
+        variables: {},
+      })
+      .subscribe({
+        next: () => assert(false),
+        error: error => {
+          expect(error.message).to.equals(errorMessage);
+          done();
+        },
+      });
+  }
 
-  //   it('should not connect until subscribe is called if lazy mode', done => {
-  //     const client: SubscriptionClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         lazy: true,
-  //       },
-  //     );
-  //     expect(client.client).to.be.null;
+  it('should not connect until subscribe is called if lazy mode', done => {
+    const client: SubscriptionClient = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        lazy: true,
+      },
+    );
+    expect(client.client).to.be.null;
 
-  //     let sub = client
-  //       .request({
-  //         query: `subscription useInfo($id: String) {
-  //         user(id: $id) {
-  //           id
-  //           name
-  //         }
-  //       }`,
-  //         operationName: 'useInfo',
-  //         variables: {
-  //           id: 3,
-  //         },
-  //       })
-  //       .subscribe({
-  //         error: e => done(e),
-  //       });
+    let sub = client
+      .request({
+        query: `subscription useInfo($id: String) {
+          user(id: $id) {
+            id
+            name
+          }
+        }`,
+        operationName: 'useInfo',
+        variables: {
+          id: 3,
+        },
+      })
+      .subscribe({
+        error: e => done(e),
+      });
 
-  //     let isDone = false;
+    let isDone = false;
 
-  //     wsServer.on('connection', (connection: any) => {
-  //       connection.on('message', () => {
-  //         if (!isDone) {
-  //           isDone = true;
-  //           try {
-  //             expect(client.client).to.not.be.null;
-  //             sub.unsubscribe();
-  //             done();
-  //           } catch (e) {
-  //             done(e);
-  //           }
-  //         }
-  //       });
-  //     });
-  //   });
+    wsServer.on('connection', (connection: any) => {
+      connection.on('message', () => {
+        if (!isDone) {
+          isDone = true;
+          try {
+            expect(client.client).to.not.be.null;
+            sub.unsubscribe();
+            done();
+          } catch (e) {
+            done(e);
+          }
+        }
+      });
+    });
+  });
 
-  //   it('should call the connectionParams function upon connection to get connectionParams if connectionParams is a function', done => {
-  //     const connectionParams = sinon.spy(() => ({
-  //       foo: 'bar',
-  //     }));
+  it('should call the connectionParams function upon connection to get connectionParams if connectionParams is a function', done => {
+    const connectionParams = sinon.spy(() => ({
+      foo: 'bar',
+    }));
 
-  //     const client: SubscriptionClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         lazy: true,
-  //         connectionParams,
-  //       },
-  //     );
+    const client: SubscriptionClient = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        lazy: true,
+        connectionParams,
+      },
+    );
 
-  //     let isDone = false,
-  //       sub: any = null;
+    let isDone = false,
+      sub: any = null;
 
-  //     wsServer.on('connection', (connection: any) => {
-  //       connection.on('message', (message: any) => {
-  //         if (!isDone) {
-  //           isDone = true;
-  //           try {
-  //             const parsedMessage = JSON.parse(message);
-  //             if (sub) {
-  //               sub.unsubscribe();
-  //             }
-  //             expect(parsedMessage.payload).to.eql({
-  //               foo: 'bar',
-  //             });
-  //             done();
-  //           } catch (e) {
-  //             done(e);
-  //           }
-  //         }
-  //       });
-  //     });
+    wsServer.on('connection', (connection: any) => {
+      connection.on('message', (message: any) => {
+        if (!isDone) {
+          isDone = true;
+          try {
+            const parsedMessage = JSON.parse(message);
+            if (sub) {
+              sub.unsubscribe();
+            }
+            expect(parsedMessage.payload).to.eql({
+              foo: 'bar',
+            });
+            done();
+          } catch (e) {
+            done(e);
+          }
+        }
+      });
+    });
 
-  //     sub = client
-  //       .request({
-  //         query: `subscription useInfo($id: String) {
-  //         user(id: $id) {
-  //           id
-  //           name
-  //         }
-  //       }`,
-  //         operationName: 'useInfo',
-  //         variables: {
-  //           id: 3,
-  //         },
-  //       })
-  //       .subscribe({});
-  //   });
+    sub = client
+      .request({
+        query: `subscription useInfo($id: String) {
+          user(id: $id) {
+            id
+            name
+          }
+        }`,
+        operationName: 'useInfo',
+        variables: {
+          id: 3,
+        },
+      })
+      .subscribe({});
+  });
 
-  //   it('should handle missing errors', function(done) {
-  //     const errorMessage = 'Unknown error';
-  //     const payload = {};
-  //     testBadServer(payload, errorMessage, done);
-  //   });
+  it('should handle missing errors', function(done) {
+    const errorMessage = 'Unknown error';
+    const payload = {};
+    testBadServer(payload, errorMessage, done);
+  });
 
-  //   it('should handle errors that are not an array', function(done) {
-  //     const errorMessage = 'Just an error';
-  //     const payload = {
-  //       message: errorMessage,
-  //     };
-  //     testBadServer(payload, errorMessage, done);
-  //   });
+  it('should handle errors that are not an array', function(done) {
+    const errorMessage = 'Just an error';
+    const payload = {
+      message: errorMessage,
+    };
+    testBadServer(payload, errorMessage, done);
+  });
 
-  //   it('should reconnect to the server', function(done) {
-  //     let connections = 0;
-  //     let client: SubscriptionClient;
-  //     let originalClient: any;
-  //     wsServer.on('connection', (connection: WebSocket) => {
-  //       connection.on('error', error => {
-  //         // ignored for testing
-  //       });
-  //       connections += 1;
-  //       if (connections === 1) {
-  //         originalClient.close();
-  //       } else {
-  //         expect(client.client).to.not.be.equal(originalClient);
-  //         done();
-  //       }
-  //     });
-  //     client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
-  //       reconnect: true,
-  //     });
-  //     originalClient = client.client;
-  //   });
+  it('should reconnect to the server', function(done) {
+    let connections = 0;
+    let client: SubscriptionClient;
+    let originalClient: any;
+    wsServer.on('connection', (connection: SocketIOClient.Socket) => {
+      connection.on('error', (error: any) => {
+        // ignored for testing
+      });
+      connections += 1;
+      if (connections === 1) {
+        originalClient.close();
+      } else {
+        expect(client.client).to.not.be.equal(originalClient);
+        done();
+      }
+    });
+    client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
+      reconnect: true,
+    });
+    originalClient = client.client;
+  });
 
-  //   it('should resubscribe after reconnect', function(done) {
-  //     let connections = 0;
-  //     let sub: any;
-  //     let client: SubscriptionClient = null;
-  //     wsServer.on('connection', (connection: WebSocket) => {
-  //       connections += 1;
-  //       connection.on('message', (message: any) => {
-  //         const parsedMessage = JSON.parse(message);
-  //         if (parsedMessage.type === MessageTypes.GQL_START) {
-  //           if (connections === 1) {
-  //             client.client.close();
-  //           } else {
-  //             sub.unsubscribe();
-  //             done();
-  //           }
-  //         }
-  //       });
-  //     });
-  //     client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
-  //       reconnect: true,
-  //     });
+  it('should resubscribe after reconnect', function(done) {
+    let connections = 0;
+    let sub: any;
+    let client: SubscriptionClient = null;
+    wsServer.on('connection', (connection: SocketIOClient.Socket) => {
+      connections += 1;
+      connection.on('message', (message: any) => {
+        const parsedMessage = JSON.parse(message);
+        if (parsedMessage.type === MessageTypes.GQL_START) {
+          if (connections === 1) {
+            client.client.close();
+          } else {
+            sub.unsubscribe();
+            done();
+          }
+        }
+      });
+    });
+    client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
+      reconnect: true,
+    });
 
-  //     sub = client
-  //       .request({
-  //         query: `
-  //         subscription useInfo{
-  //           invalid
-  //         }
-  //       `,
-  //         variables: {},
-  //       })
-  //       .subscribe({
-  //         next: () => {
-  //           assert(false);
-  //         },
-  //       });
-  //   });
+    sub = client
+      .request({
+        query: `
+          subscription useInfo{
+            invalid
+          }
+        `,
+        variables: {},
+      })
+      .subscribe({
+        next: () => {
+          assert(false);
+        },
+      });
+  });
 
-  //   it('should throw an exception when trying to request when socket is closed', function(done) {
-  //     let client: SubscriptionClient = null;
+  it('should throw an exception when trying to request when socket is closed', function(done) {
+    let client: SubscriptionClient = null;
 
-  //     client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`, {
-  //       reconnect: true,
-  //     });
+    client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`, {
+      reconnect: true,
+    });
 
-  //     setTimeout(() => {
-  //       client.client.close();
-  //     }, 500);
+    setTimeout(() => {
+      client.client.close();
+    }, 500);
 
-  //     setTimeout(() => {
-  //       expect(() => {
-  //         client
-  //           .request({
-  //             query: `subscription useInfo{
-  //             invalid
-  //           }`,
-  //             variables: {},
-  //           })
-  //           .subscribe({});
+    setTimeout(() => {
+      expect(() => {
+        client
+          .request({
+            query: `subscription useInfo{
+              invalid
+            }`,
+            variables: {},
+          })
+          .subscribe({});
 
-  //         done();
-  //       }).to.throw();
-  //     }, 1000);
-  //   });
+        done();
+      }).to.throw();
+    }, 1000);
+  });
 
   //   // it('should emit event when an websocket error occurs', function (done) {
   //   //   const client = new SubscriptionClient(`http://localhost:${ERROR_TEST_PORT}/`);
@@ -1064,329 +1064,329 @@ describe('Client', function() {
   //   //   });
   //   // });
 
-  //   it('should stop trying to reconnect to the server', function(done) {
-  //     wsServer.on('connection', (connection: WebSocket) => {
-  //       connection.close();
-  //     });
+  it('should stop trying to reconnect to the server', function(done) {
+    wsServer.on('connection', (connection: SocketIOClient.Socket) => {
+      wsServer.close();
+    });
 
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         timeout: 500,
-  //         reconnect: true,
-  //         reconnectionAttempts: 2,
-  //       },
-  //     );
-  //     const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
+    const subscriptionsClient = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        timeout: 500,
+        reconnect: true,
+        reconnectionAttempts: 2,
+      },
+    );
+    const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
 
-  //     setTimeout(() => {
-  //       expect(connectSpy.callCount).to.be.equal(2);
-  //       done();
-  //     }, 1500);
-  //   });
+    setTimeout(() => {
+      expect(connectSpy.callCount).to.be.equal(2);
+      done();
+    }, 1500);
+  });
 
-  //   it('should stop trying to reconnect to the server if it not receives the ack', function(done) {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         timeout: 500,
-  //         reconnect: true,
-  //         reconnectionAttempts: 2,
-  //       },
-  //     );
-  //     const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
-  //     wsServer.on('connection', (connection: any) => {
-  //       connection.on('message', (message: any) => {
-  //         const parsedMessage = JSON.parse(message);
-  //         // mock server
-  //         if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
-  //           connection.close();
-  //         }
-  //       });
-  //     });
+  it('should stop trying to reconnect to the server if it not receives the ack', function(done) {
+    const subscriptionsClient = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        timeout: 500,
+        reconnect: true,
+        reconnectionAttempts: 2,
+      },
+    );
+    const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
+    wsServer.on('connection', (connection: any) => {
+      connection.on('message', (message: any) => {
+        const parsedMessage = JSON.parse(message);
+        // mock server
+        if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
+          wsServer.close();
+        }
+      });
+    });
 
-  //     setTimeout(() => {
-  //       expect(connectSpy.callCount).to.be.equal(2);
-  //       done();
-  //     }, 1500);
-  //   });
+    setTimeout(() => {
+      expect(connectSpy.callCount).to.be.equal(2);
+      done();
+    }, 1500);
+  });
 
-  //   it('should keep trying to reconnect if receives the ack from the server', function(done) {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         timeout: 500,
-  //         reconnect: true,
-  //         reconnectionAttempts: 2,
-  //       },
-  //     );
-  //     const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
-  //     let connections = 0;
-  //     wsServer.on('connection', (connection: any) => {
-  //       connection.on('message', (message: any) => {
-  //         const parsedMessage = JSON.parse(message);
-  //         // mock server
-  //         if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
-  //           ++connections;
-  //           connection.send(
-  //             JSON.stringify({
-  //               type: MessageTypes.GQL_CONNECTION_ACK,
-  //               payload: {},
-  //             }),
-  //           );
-  //           connection.close();
-  //         }
-  //       });
-  //     });
-
-  //     setTimeout(() => {
-  //       expect(connections).to.be.greaterThan(3);
-  //       expect(connectSpy.callCount).to.be.greaterThan(2);
-  //       wsServer.close();
-  //       done();
-  //     }, 1900);
-  //   });
-
-  //   it('should take care of received keep alive', done => {
-  //     let wasKAReceived = false;
-
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${KEEP_ALIVE_TEST_PORT}/`,
-  //       { timeout: 600 },
-  //     );
-  //     const originalOnMessage = subscriptionsClient.client.onmessage;
-  //     subscriptionsClient.client.onmessage = (dataReceived: any) => {
-  //       let receivedDataParsed = JSON.parse(dataReceived.data);
-  //       if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_KEEP_ALIVE) {
-  //         if (!wasKAReceived) {
-  //           wasKAReceived = true;
-  //           originalOnMessage(dataReceived);
-  //         }
-  //       }
-  //     };
-
-  //     setTimeout(() => {
-  //       expect(wasKAReceived).to.equal(true);
-  //       expect(subscriptionsClient.status).to.equal(WebSocket.CLOSED);
-  //       done();
-  //     }, 1200);
-  //   });
-
-  //   it('should correctly clear timeout if receives ka too early', done => {
-  //     let receivedKeepAlive = 0;
-
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${KEEP_ALIVE_TEST_PORT}/`,
-  //       { timeout: 600 },
-  //     );
-  //     const checkConnectionSpy = sinon.spy(
-  //       subscriptionsClient as any,
-  //       'checkConnection',
-  //     );
-  //     const originalOnMessage = subscriptionsClient.client.onmessage;
-  //     subscriptionsClient.client.onmessage = (dataReceived: any) => {
-  //       let receivedDataParsed = JSON.parse(dataReceived.data);
-  //       if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_KEEP_ALIVE) {
-  //         ++receivedKeepAlive;
-  //         originalOnMessage(dataReceived);
-  //       }
-  //     };
-
-  //     setTimeout(() => {
-  //       expect(checkConnectionSpy.callCount).to.be.equal(receivedKeepAlive);
-  //       expect(subscriptionsClient.status).to.be.equal(ReadyState.OPEN);
-  //       done();
-  //     }, 1300);
-  //   });
-
-  //   it('should take care of invalid message received', done => {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //     );
-  //     const originalOnMessage = subscriptionsClient.client.onmessage;
-  //     const dataToSend = {
-  //       data: JSON.stringify({ type: 'invalid' }),
-  //     };
-
-  //     expect(() => {
-  //       originalOnMessage.call(subscriptionsClient, dataToSend)();
-  //     }).to.throw('Invalid message type!');
-  //     done();
-  //   });
-
-  //   it('should throw if received data is not JSON-parseable', done => {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //     );
-  //     const originalOnMessage = subscriptionsClient.client.onmessage;
-  //     const dataToSend = {
-  //       data: 'invalid',
-  //     };
-
-  //     expect(() => {
-  //       originalOnMessage.call(subscriptionsClient, dataToSend)();
-  //     }).to.throw('Message must be JSON-parseable. Got: invalid');
-  //     done();
-  //   });
-
-  //   it('should delete operation when receive a GQL_COMPLETE', done => {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //     );
-  //     subscriptionsClient.operations['1'] = {
-  //       options: {
-  //         query: 'invalid',
-  //       },
-  //       handler: () => {
-  //         // nothing
-  //       },
-  //     };
-
-  //     const originalOnMessage = subscriptionsClient.client.onmessage;
-  //     const dataToSend = {
-  //       data: JSON.stringify({ id: 1, type: MessageTypes.GQL_COMPLETE }),
-  //     };
-
-  //     expect(subscriptionsClient.operations).to.have.property('1');
-  //     originalOnMessage(dataToSend);
-  //     expect(subscriptionsClient.operations).to.not.have.property('1');
-  //     done();
-  //   });
-
-  //   it('should force close the connection without tryReconnect', function(done) {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         reconnect: true,
-  //         reconnectionAttempts: 1,
-  //       },
-  //     );
-  //     const tryReconnectSpy = sinon.spy(
-  //       subscriptionsClient as any,
-  //       'tryReconnect',
-  //     );
-  //     let receivedConnecitonTerminate = false;
-  //     wsServer.on('connection', (connection: any) => {
-  //       connection.on('message', (message: any) => {
-  //         const parsedMessage = JSON.parse(message);
-  //         // mock server
-  //         if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
-  //           connection.send(
-  //             JSON.stringify({
-  //               type: MessageTypes.GQL_CONNECTION_ACK,
-  //               payload: {},
-  //             }),
-  //           );
-  //         }
-
-  //         if (parsedMessage.type === MessageTypes.GQL_CONNECTION_TERMINATE) {
-  //           receivedConnecitonTerminate = true;
-  //         }
-  //       });
-  //     });
-
-  //     const originalOnMessage = subscriptionsClient.client.onmessage;
-  //     subscriptionsClient.client.onmessage = (dataReceived: any) => {
-  //       let receivedDataParsed = JSON.parse(dataReceived.data);
-  //       if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_ACK) {
-  //         originalOnMessage(dataReceived);
-  //         subscriptionsClient.close();
-  //       }
-  //     };
-
-  //     setTimeout(() => {
-  //       expect(receivedConnecitonTerminate).to.be.equal(true);
-  //       expect(tryReconnectSpy.callCount).to.be.equal(0);
-  //       expect(subscriptionsClient.status).to.be.equal(WebSocket.CLOSED);
-  //       done();
-  //     }, 500);
-  //   });
-
-  //   it('should close the connection without sent connection terminate and reconnect', function(done) {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         reconnect: true,
-  //         reconnectionAttempts: 1,
-  //       },
-  //     );
-  //     const tryReconnectSpy = sinon.spy(
-  //       subscriptionsClient as any,
-  //       'tryReconnect',
-  //     );
-  //     let receivedConnecitonTerminate = false;
-  //     wsServer.on('connection', (connection: any) => {
-  //       connection.on('message', (message: any) => {
-  //         const parsedMessage = JSON.parse(message);
-  //         // mock server
-  //         if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
-  //           connection.send(
-  //             JSON.stringify({
-  //               type: MessageTypes.GQL_CONNECTION_ACK,
-  //               payload: {},
-  //             }),
-  //           );
-  //         }
-
-  //         if (parsedMessage.type === MessageTypes.GQL_CONNECTION_TERMINATE) {
-  //           receivedConnecitonTerminate = true;
-  //         }
-  //       });
-  //     });
-
-  //     const originalOnMessage = subscriptionsClient.client.onmessage;
-  //     subscriptionsClient.client.onmessage = (dataReceived: any) => {
-  //       let receivedDataParsed = JSON.parse(dataReceived.data);
-  //       if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_ACK) {
-  //         originalOnMessage(dataReceived);
-  //         subscriptionsClient.close(false);
-  //       }
-  //     };
-
-  //     setTimeout(() => {
-  //       expect(tryReconnectSpy.callCount).to.be.equal(1);
-  //       expect(subscriptionsClient.status).to.be.equal(WebSocket.OPEN);
-  //       expect(receivedConnecitonTerminate).to.be.equal(false);
-  //       done();
-  //     }, 500);
-  //   });
-
-  //   it('should close the connection after inactivityTimeout and zero active subscriptions', function(done) {
-  //     const subscriptionsClient = new SubscriptionClient(
-  //       `http://localhost:${RAW_TEST_PORT}/`,
-  //       {
-  //         inactivityTimeout: 100,
-  //       },
-  //     );
-  //     const sub = subscriptionsClient
-  //       .request({
-  //         query: `subscription useInfo($id: String) {
-  //         user(id: $id) {
-  //           id
-  //           name
-  //         }
-  //       }`,
-  //         operationName: 'useInfo',
-  //         variables: {
-  //           id: 3,
-  //         },
-  //       })
-  //       .subscribe({});
-
-  //     setTimeout(() => {
-  //       expect(Object.keys(subscriptionsClient.operations).length).to.be.equal(1);
-  //       sub.unsubscribe();
-  //       setTimeout(() => {
-  //         expect(Object.keys(subscriptionsClient.operations).length).to.be.equal(
-  //           0,
+  // it('should keep trying to reconnect if receives the ack from the server', function(done) {
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${RAW_TEST_PORT}/`,
+  //     {
+  //       timeout: 500,
+  //       reconnect: true,
+  //       reconnectionAttempts: 2,
+  //     },
+  //   );
+  //   const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
+  //   let connections = 0;
+  //   wsServer.on('connection', (connection: any) => {
+  //     connection.on('message', (message: any) => {
+  //       const parsedMessage = JSON.parse(message);
+  //       // mock server
+  //       if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
+  //         ++connections;
+  //         connection.send(
+  //           JSON.stringify({
+  //             type: MessageTypes.GQL_CONNECTION_ACK,
+  //             payload: {},
+  //           }),
   //         );
-  //         setTimeout(() => {
-  //           expect(subscriptionsClient.status).to.be.equal(WebSocket.CLOSED);
-  //           done();
-  //         }, 101);
-  //       }, 50);
-  //     }, 50);
+  //         wsServer.close();
+  //       }
+  //     });
   //   });
+
+  //   setTimeout(() => {
+  //     expect(connections).to.be.greaterThan(3);
+  //     expect(connectSpy.callCount).to.be.greaterThan(2);
+  //     wsServer.close();
+  //     done();
+  //   }, 1900);
+  // });
+
+  // it('should take care of received keep alive', done => {
+  //   let wasKAReceived = false;
+
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${KEEP_ALIVE_TEST_PORT}/`,
+  //     { timeout: 600 },
+  //   );
+  //   const originalOnMessage = subscriptionsClient.client.onmessage;
+  //   subscriptionsClient.client.onmessage = (dataReceived: any) => {
+  //     let receivedDataParsed = JSON.parse(dataReceived);
+  //     if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_KEEP_ALIVE) {
+  //       if (!wasKAReceived) {
+  //         wasKAReceived = true;
+  //         originalOnMessage(dataReceived);
+  //       }
+  //     }
+  //   };
+
+  //   setTimeout(() => {
+  //     expect(wasKAReceived).to.equal(true);
+  //     expect(subscriptionsClient.status).to.equal(ReadyState.CLOSED);
+  //     done();
+  //   }, 1200);
+  // });
+
+  // it('should correctly clear timeout if receives ka too early', done => {
+  //   let receivedKeepAlive = 0;
+
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${KEEP_ALIVE_TEST_PORT}/`,
+  //     { timeout: 600 },
+  //   );
+  //   const checkConnectionSpy = sinon.spy(
+  //     subscriptionsClient as any,
+  //     'checkConnection',
+  //   );
+  //   const originalOnMessage = subscriptionsClient.client.onmessage;
+  //   subscriptionsClient.client.onmessage = (dataReceived: any) => {
+  //     let receivedDataParsed = JSON.parse(dataReceived.data);
+  //     if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_KEEP_ALIVE) {
+  //       ++receivedKeepAlive;
+  //       originalOnMessage(dataReceived);
+  //     }
+  //   };
+
+  //   setTimeout(() => {
+  //     expect(checkConnectionSpy.callCount).to.be.equal(receivedKeepAlive);
+  //     expect(subscriptionsClient.status).to.be.equal(ReadyState.OPEN);
+  //     done();
+  //   }, 1300);
+  // });
+
+  // it('should take care of invalid message received', done => {
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${RAW_TEST_PORT}/`,
+  //   );
+  //   const originalOnMessage = subscriptionsClient.client.onmessage;
+  //   const dataToSend = {
+  //     data: JSON.stringify({ type: 'invalid' }),
+  //   };
+
+  //   expect(() => {
+  //     originalOnMessage.call(subscriptionsClient, dataToSend)();
+  //   }).to.throw('Invalid message type!');
+  //   done();
+  // });
+
+  // it('should throw if received data is not JSON-parseable', done => {
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${RAW_TEST_PORT}/`,
+  //   );
+  //   const originalOnMessage = subscriptionsClient.client.onmessage;
+  //   const dataToSend = {
+  //     data: 'invalid',
+  //   };
+
+  //   expect(() => {
+  //     originalOnMessage.call(subscriptionsClient, dataToSend)();
+  //   }).to.throw('Message must be JSON-parseable. Got: invalid');
+  //   done();
+  // });
+
+  // it('should delete operation when receive a GQL_COMPLETE', done => {
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${RAW_TEST_PORT}/`,
+  //   );
+  //   subscriptionsClient.operations['1'] = {
+  //     options: {
+  //       query: 'invalid',
+  //     },
+  //     handler: () => {
+  //       // nothing
+  //     },
+  //   };
+
+  //   const originalOnMessage = subscriptionsClient.client.onmessage;
+  //   const dataToSend = {
+  //     data: JSON.stringify({ id: 1, type: MessageTypes.GQL_COMPLETE }),
+  //   };
+
+  //   expect(subscriptionsClient.operations).to.have.property('1');
+  //   originalOnMessage(dataToSend);
+  //   expect(subscriptionsClient.operations).to.not.have.property('1');
+  //   done();
+  // });
+
+  // it('should force close the connection without tryReconnect', function(done) {
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${RAW_TEST_PORT}/`,
+  //     {
+  //       reconnect: true,
+  //       reconnectionAttempts: 1,
+  //     },
+  //   );
+  //   const tryReconnectSpy = sinon.spy(
+  //     subscriptionsClient as any,
+  //     'tryReconnect',
+  //   );
+  //   let receivedConnecitonTerminate = false;
+  //   wsServer.on('connection', (connection: any) => {
+  //     connection.on('message', (message: any) => {
+  //       const parsedMessage = JSON.parse(message);
+  //       // mock server
+  //       if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
+  //         connection.send(
+  //           JSON.stringify({
+  //             type: MessageTypes.GQL_CONNECTION_ACK,
+  //             payload: {},
+  //           }),
+  //         );
+  //       }
+
+  //       if (parsedMessage.type === MessageTypes.GQL_CONNECTION_TERMINATE) {
+  //         receivedConnecitonTerminate = true;
+  //       }
+  //     });
+  //   });
+
+  //   const originalOnMessage = subscriptionsClient.client.onmessage;
+  //   subscriptionsClient.client.onmessage = (dataReceived: any) => {
+  //     let receivedDataParsed = JSON.parse(dataReceived);
+  //     if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_ACK) {
+  //       originalOnMessage(dataReceived);
+  //       subscriptionsClient.close();
+  //     }
+  //   };
+
+  //   setTimeout(() => {
+  //     expect(receivedConnecitonTerminate).to.be.equal(true);
+  //     expect(tryReconnectSpy.callCount).to.be.equal(0);
+  //     expect(subscriptionsClient.status).to.be.equal(ReadyState.CLOSED);
+  //     done();
+  //   }, 500);
+  // });
+
+  // it('should close the connection without sent connection terminate and reconnect', function(done) {
+  //   const subscriptionsClient = new SubscriptionClient(
+  //     `http://localhost:${RAW_TEST_PORT}/`,
+  //     {
+  //       reconnect: true,
+  //       reconnectionAttempts: 1,
+  //     },
+  //   );
+  //   const tryReconnectSpy = sinon.spy(
+  //     subscriptionsClient as any,
+  //     'tryReconnect',
+  //   );
+  //   let receivedConnecitonTerminate = false;
+  //   wsServer.on('connection', (connection: any) => {
+  //     connection.on('message', (message: any) => {
+  //       const parsedMessage = JSON.parse(message);
+  //       // mock server
+  //       if (parsedMessage.type === MessageTypes.GQL_CONNECTION_INIT) {
+  //         connection.send(
+  //           JSON.stringify({
+  //             type: MessageTypes.GQL_CONNECTION_ACK,
+  //             payload: {},
+  //           }),
+  //         );
+  //       }
+
+  //       if (parsedMessage.type === MessageTypes.GQL_CONNECTION_TERMINATE) {
+  //         receivedConnecitonTerminate = true;
+  //       }
+  //     });
+  //   });
+
+  //   const originalOnMessage = subscriptionsClient.client.onmessage;
+  //   subscriptionsClient.client.onmessage = (dataReceived: any) => {
+  //     let receivedDataParsed = JSON.parse(dataReceived.data);
+  //     if (receivedDataParsed.type === MessageTypes.GQL_CONNECTION_ACK) {
+  //       originalOnMessage(dataReceived);
+  //       subscriptionsClient.close(false);
+  //     }
+  //   };
+
+  //   setTimeout(() => {
+  //     expect(tryReconnectSpy.callCount).to.be.equal(1);
+  //     expect(subscriptionsClient.status).to.be.equal(ReadyState.OPEN);
+  //     expect(receivedConnecitonTerminate).to.be.equal(false);
+  //     done();
+  //   }, 500);
+  // });
+
+  it('should close the connection after inactivityTimeout and zero active subscriptions', function(done) {
+    const subscriptionsClient = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        inactivityTimeout: 100,
+      },
+    );
+    const sub = subscriptionsClient
+      .request({
+        query: `subscription useInfo($id: String) {
+          user(id: $id) {
+            id
+            name
+          }
+        }`,
+        operationName: 'useInfo',
+        variables: {
+          id: 3,
+        },
+      })
+      .subscribe({});
+
+    setTimeout(() => {
+      expect(Object.keys(subscriptionsClient.operations).length).to.be.equal(1);
+      sub.unsubscribe();
+      setTimeout(() => {
+        expect(Object.keys(subscriptionsClient.operations).length).to.be.equal(
+          0,
+        );
+        setTimeout(() => {
+          expect(subscriptionsClient.status).to.be.equal(ReadyState.CLOSED);
+          done();
+        }, 101);
+      }, 50);
+    }, 50);
+  });
 });
 
 // describe('Server', function() {
