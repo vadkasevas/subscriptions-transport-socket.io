@@ -1,5 +1,4 @@
 import * as io from 'socket.io';
-import { IncomingMessage } from 'http';
 
 import {
   AdapterInterface,
@@ -7,7 +6,6 @@ import {
   SocketAdapterInterface,
   State,
 } from './adapterInterface';
-import { GRAPHQL_WS } from '..';
 
 class SocketAdapter implements SocketAdapterInterface {
   private _socket: io.Socket;
@@ -17,7 +15,8 @@ class SocketAdapter implements SocketAdapterInterface {
   }
 
   public get protocol() {
-    return GRAPHQL_WS;
+    const { protocol } = this._socket.handshake.query;
+    return protocol;
   }
 
   public get state() {
@@ -59,7 +58,8 @@ export class SocketIOAdapter implements AdapterInterface {
   }
 
   public on(event: string, connectionHandler: ConnectionHandler) {
-    this.io.on(event, (socket: io.Socket, request: IncomingMessage) => {
+    this.io.on(event, (socket: io.Socket) => {
+      const { request } = socket.client;
       this.socket = new SocketAdapter(socket);
       connectionHandler(this.socket, request);
     });
@@ -70,6 +70,6 @@ export class SocketIOAdapter implements AdapterInterface {
   }
 
   public close() {
-    this.io.close();
+    this.socket.close();
   }
 }

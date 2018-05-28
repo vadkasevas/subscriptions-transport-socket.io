@@ -117,7 +117,7 @@ export class SubscriptionServer {
   public static create(
     options: ServerOptions,
     socketOptions: any,
-    websocketLibrary: string = 'io',
+    websocketLibrary: string = 'ws',
   ) {
     return new SubscriptionServer(options, socketOptions, websocketLibrary);
   }
@@ -125,7 +125,7 @@ export class SubscriptionServer {
   constructor(
     options: ServerOptions,
     socketOptions: any,
-    websocketLibrary: string = 'io',
+    websocketLibrary: string = 'ws',
   ) {
     const {
       onOperation,
@@ -197,7 +197,13 @@ export class SubscriptionServer {
       };
 
       socket.on('error', connectionClosedHandler);
-      socket.on('close', connectionClosedHandler);
+      // Todo: Implement a better server interface -.-
+      if (websocketLibrary === 'io') {
+        socket.on('disconnect', connectionClosedHandler);
+      } else {
+        socket.on('close', connectionClosedHandler);
+      }
+
       socket.on('message', this.onMessage(connectionContext));
     };
 

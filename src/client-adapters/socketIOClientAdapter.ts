@@ -3,12 +3,16 @@ import { IClientAdapter, ReadyState } from './clientAdapterInterface';
 
 export class SocketIOClientAdapter implements IClientAdapter {
   private socket: SocketIOClient.Socket;
+  private _onmessage: Function;
+
   constructor(url: string, protocol: string) {
     this.socket = io(url, {
       transports: ['websocket'],
       forceNew: true,
+      query: {
+        protocol: protocol,
+      },
     });
-    (this.socket as any).protocol = protocol;
   }
 
   public get readyState() {
@@ -44,7 +48,13 @@ export class SocketIOClientAdapter implements IClientAdapter {
     this.socket.on('error', onerror);
   }
 
+  public get onmessage() {
+    return this._onmessage;
+  }
+
   public set onmessage(onmessage: Function) {
-    this.socket.on('message', onmessage);
+    this.socket.removeListener('message');
+    this._onmessage = onmessage;
+    this.socket.on('message', this._onmessage);
   }
 }

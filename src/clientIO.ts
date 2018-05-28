@@ -11,7 +11,6 @@ import $$observable from 'symbol-observable';
 import { GRAPHQL_WS } from './protocol';
 import { WS_TIMEOUT } from './defaults';
 import MessageTypes from './message-types';
-import { NativeClientAdapter } from './client-adapters/nativeClientAdapter';
 import { SocketIOClientAdapter } from './client-adapters/socketIOClientAdapter';
 import {
   IClientAdapter,
@@ -111,7 +110,7 @@ export class SubscriptionClient {
     } =
       options || {};
 
-    this.wsImpl = webSocketImpl || NativeClientAdapter;
+    this.wsImpl = webSocketImpl || SocketIOClientAdapter;
 
     if (!this.wsImpl) {
       throw new Error(
