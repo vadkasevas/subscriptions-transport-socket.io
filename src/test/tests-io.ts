@@ -25,7 +25,7 @@ import { OperationMessage } from '../server';
 import { $$asyncIterator } from 'iterall';
 import { ReadyState } from '../client-adapters/clientAdapterInterface';
 
-const TEST_PORT = 4953;
+const TEST_PORT = 5953;
 const KEEP_ALIVE_TEST_PORT = TEST_PORT + 1;
 const DELAYED_TEST_PORT = TEST_PORT + 2;
 const RAW_TEST_PORT = TEST_PORT + 4;
@@ -275,7 +275,7 @@ new SubscriptionServer(
   'io',
 );
 
-describe('Client', function() {
+describe('Client socket.io', function() {
   let wsServer: SocketIO.Server;
 
   beforeEach(() => {
@@ -1393,7 +1393,7 @@ describe('Client', function() {
   });
 });
 
-describe('Server', function() {
+describe('Server socket.io', function() {
   let onOperationSpy: any;
   let server: Server;
 
@@ -2336,7 +2336,7 @@ describe('Server', function() {
   });
 });
 
-describe('Message Types', function() {
+describe('Message Types socket.io', function() {
   it('should throw an error if static class is instantiated', done => {
     expect(() => {
       new MessageTypes();
@@ -2345,7 +2345,7 @@ describe('Message Types', function() {
   });
 });
 
-describe('Client<->Server Flow', () => {
+describe('Client<->Server Flow socket.io', () => {
   let server: Server;
 
   afterEach(() => {
