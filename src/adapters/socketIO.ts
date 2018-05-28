@@ -53,8 +53,8 @@ export class SocketIOAdapter implements AdapterInterface {
   private socket: SocketAdapter;
 
   constructor(options?: any) {
-    const { server } = options;
-    this.io = io(server);
+    const { ioInstance, server } = options;
+    this.io = ioInstance || io(server);
   }
 
   public on(event: string, connectionHandler: ConnectionHandler) {
