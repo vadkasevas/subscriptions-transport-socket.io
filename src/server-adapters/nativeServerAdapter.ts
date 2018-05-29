@@ -2,13 +2,13 @@ import * as WebSocket from 'ws';
 import { IncomingMessage } from 'http';
 
 import {
-  AdapterInterface,
+  IServerAdapter,
   ConnectionHandler,
-  SocketAdapterInterface,
+  ISocketAdapter,
   State,
-} from './adapterInterface';
+} from './serverAdapterInterface';
 
-class SocketAdapter implements SocketAdapterInterface {
+class SocketAdapter implements ISocketAdapter {
   private _socket: WebSocket;
 
   constructor(socket: WebSocket) {
@@ -49,7 +49,7 @@ class SocketAdapter implements SocketAdapterInterface {
   }
 }
 
-export class WSAdapter implements AdapterInterface {
+export class NativeServerAdapter implements IServerAdapter {
   private wsServer: WebSocket.Server;
 
   constructor(options?: any) {

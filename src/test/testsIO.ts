@@ -20,10 +20,12 @@ import { GRAPHQL_SUBSCRIPTIONS } from '../protocol';
 
 import { createServer, IncomingMessage, ServerResponse, Server } from 'http';
 import { SubscriptionServer, ExecutionParams } from '../server';
-import { SubscriptionClient } from '../clientIO';
+import { SubscriptionClient } from '../client';
 import { OperationMessage } from '../server';
 import { $$asyncIterator } from 'iterall';
 import { ReadyState } from '../client-adapters/clientAdapterInterface';
+import { SocketIOServerAdapter } from '../server-adapters/socketIOServerAdapter';
+import { SocketIOClientAdapter } from '..';
 
 const TEST_PORT = 5953;
 const KEEP_ALIVE_TEST_PORT = TEST_PORT + 1;
@@ -224,7 +226,7 @@ function notFoundRequestListener(
 
 const httpServer = createServer(notFoundRequestListener);
 httpServer.listen(TEST_PORT);
-new SubscriptionServer(options, { server: httpServer }, 'io');
+new SubscriptionServer(options, { server: httpServer }, SocketIOServerAdapter);
 
 const httpServerWithKA = createServer(notFoundRequestListener);
 httpServerWithKA.listen(KEEP_ALIVE_TEST_PORT);
@@ -233,7 +235,7 @@ new SubscriptionServer(
   {
     server: httpServerWithKA,
   },
-  'io',
+  SocketIOServerAdapter,
 );
 
 const httpServerWithEvents = createServer(notFoundRequestListener);
@@ -243,7 +245,7 @@ const eventsServer = new SubscriptionServer(
   {
     server: httpServerWithEvents,
   },
-  'io',
+  SocketIOServerAdapter,
 );
 
 const httpServerWithOnConnectError = createServer(notFoundRequestListener);
@@ -253,7 +255,7 @@ new SubscriptionServer(
   {
     server: httpServerWithOnConnectError,
   },
-  'io',
+  SocketIOServerAdapter,
 );
 
 const httpServerWithDelay = createServer(notFoundRequestListener);
@@ -272,7 +274,7 @@ new SubscriptionServer(
     },
   }),
   { server: httpServerWithDelay },
-  'io',
+  SocketIOServerAdapter,
 );
 
 describe('Client socket.io', function() {
@@ -297,14 +299,22 @@ describe('Client socket.io', function() {
       });
     });
 
-    new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`);
+    new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
   });
 
   it('should send GQL_CONNECTION_INIT message first, then the GQL_START message', done => {
     let initReceived = false;
 
     let sub: any;
-    const client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     wsServer.on('connection', (connection: any) => {
       connection.on('message', (message: any) => {
         const parsedMessage = JSON.parse(message);
@@ -343,7 +353,11 @@ describe('Client socket.io', function() {
   });
 
   it('should emit connect event for client side when socket is open', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     const unregister = client.onConnected(() => {
       unregister();
@@ -352,11 +366,15 @@ describe('Client socket.io', function() {
   });
 
   it('should emit disconnect event for client side when socket closed', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`, {
-      connectionCallback: () => {
-        client.client.close();
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      {
+        connectionCallback: () => {
+          client.client.close();
+        },
       },
-    });
+      SocketIOClientAdapter,
+    );
 
     const unregister = client.onDisconnected(() => {
       unregister();
@@ -365,13 +383,17 @@ describe('Client socket.io', function() {
   });
 
   it('should emit reconnect event for client side when socket closed', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`, {
-      reconnect: true,
-      reconnectionAttempts: 1,
-      connectionCallback: () => {
-        client.client.close();
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      {
+        reconnect: true,
+        reconnectionAttempts: 1,
+        connectionCallback: () => {
+          client.client.close();
+        },
       },
-    });
+      SocketIOClientAdapter,
+    );
 
     const unregister = client.onReconnected(() => {
       unregister();
@@ -380,7 +402,11 @@ describe('Client socket.io', function() {
   });
 
   it('should emit connected event for client side when socket closed', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     const onConnectingSpy = sinon.spy();
     const unregisterOnConnecting = client.onConnecting(onConnectingSpy);
 
@@ -395,6 +421,8 @@ describe('Client socket.io', function() {
   it('should emit connecting event for client side when socket closed', done => {
     const subscriptionsClient = new SubscriptionClient(
       `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     const onConnectedSpy = sinon.spy();
     const unregisterOnConnected = subscriptionsClient.onConnected(
@@ -409,11 +437,15 @@ describe('Client socket.io', function() {
   });
 
   it('should emit disconnected event for client side when socket closed', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`, {
-      connectionCallback: () => {
-        client.client.close();
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      {
+        connectionCallback: () => {
+          client.client.close();
+        },
       },
-    });
+      SocketIOClientAdapter,
+    );
 
     const unregister = client.onDisconnected(() => {
       unregister();
@@ -422,13 +454,17 @@ describe('Client socket.io', function() {
   });
 
   it('should emit reconnected event for client side when socket closed', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`, {
-      reconnect: true,
-      reconnectionAttempts: 1,
-      connectionCallback: () => {
-        client.client.close();
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      {
+        reconnect: true,
+        reconnectionAttempts: 1,
+        connectionCallback: () => {
+          client.client.close();
+        },
       },
-    });
+      SocketIOClientAdapter,
+    );
     const onReconnectingSpy = sinon.spy();
     const unregisterOnReconnecting = client.onReconnecting(onReconnectingSpy);
 
@@ -450,6 +486,7 @@ describe('Client socket.io', function() {
           subscriptionsClient.client.close();
         },
       },
+      SocketIOClientAdapter,
     );
     const onReconnectedSpy = sinon.spy();
     const unregisterOnReconnected = subscriptionsClient.onReconnected(
@@ -464,7 +501,11 @@ describe('Client socket.io', function() {
   });
 
   it('should throw an exception when query is not provided', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     client
       .request({
@@ -485,7 +526,11 @@ describe('Client socket.io', function() {
   });
 
   it('should throw an exception when query is not valid', done => {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     client
       .request({
@@ -537,7 +582,11 @@ describe('Client socket.io', function() {
       });
     });
 
-    const client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     client
       .request({
@@ -575,13 +624,21 @@ describe('Client socket.io', function() {
       });
     });
 
-    new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
-      connectionParams: connectionParams,
-    });
+    new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        connectionParams: connectionParams,
+      },
+      SocketIOClientAdapter,
+    );
   });
 
   it('should override OperationOptions with middleware', function(done) {
-    const client3 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client3 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     let asyncFunc = (next: any) => {
       setTimeout(() => {
         next();
@@ -646,38 +703,44 @@ describe('Client socket.io', function() {
       });
     });
 
-    new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
-      connectionCallback: (error: any) => {
-        expect(error.message).to.equals('test error');
-        done();
+    new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        connectionCallback: (error: any) => {
+          expect(error.message).to.equals('test error');
+          done();
+        },
       },
-    });
+      SocketIOClientAdapter,
+    );
   });
 
-  // it('should handle connection_error message and handle server that closes connection', done => {
-  //   let client: any = null;
+  it('should handle connection_error message and handle server that closes connection', done => {
+    let client: any = null;
 
-  //   wsServer.on('connection', (connection: any) => {
-  //     connection.on('message', (message: any) => {
-  //       connection.send(
-  //         JSON.stringify({
-  //           type: MessageTypes.GQL_CONNECTION_ERROR,
-  //           payload: { message: 'test error' },
-  //         }),
-  //         () => {
-  //           connection.close();
+    wsServer.on('connection', (connection: any) => {
+      connection.on('message', (message: any) => {
+        connection.send(
+          JSON.stringify({
+            type: MessageTypes.GQL_CONNECTION_ERROR,
+            payload: { message: 'test error' },
+          }),
+        );
+        connection.disconnect();
 
-  //           setTimeout(() => {
-  //             expect(client.status).to.equals(ReadyState.CLOSED);
-  //             done();
-  //           }, 500);
-  //         },
-  //       );
-  //     });
-  //   });
+        setTimeout(() => {
+          expect(client.status).to.equals(ReadyState.CLOSED);
+          done();
+        }, 500);
+      });
+    });
 
-  //   client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`);
-  // });
+    client = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
+  });
 
   it('should handle correctly GQL_CONNECTION_ACK message', done => {
     wsServer.on('connection', (connection: any) => {
@@ -688,16 +751,24 @@ describe('Client socket.io', function() {
       });
     });
 
-    new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
-      connectionCallback: (error: any) => {
-        expect(error).to.equals(undefined);
-        done();
+    new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        connectionCallback: (error: any) => {
+          expect(error).to.equals(undefined);
+          done();
+        },
       },
-    });
+      SocketIOClientAdapter,
+    );
   });
 
   it('removes subscription when it unsubscribes from it', function() {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     return new Promise((resolve, reject) => {
       let sub = client
@@ -734,7 +805,11 @@ describe('Client socket.io', function() {
   });
 
   it('queues messages while websocket is still connecting', function(done) {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     let sub = client
       .request({
@@ -763,7 +838,11 @@ describe('Client socket.io', function() {
   });
 
   it('should call error handler when graphql result has errors', function(done) {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     setTimeout(() => {
       client
@@ -794,7 +873,11 @@ describe('Client socket.io', function() {
   });
 
   it('should call error handler when graphql query is not valid', function(done) {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     setTimeout(() => {
       client
@@ -835,7 +918,11 @@ describe('Client socket.io', function() {
       });
     });
 
-    const client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     client
       .request({
         query: `
@@ -860,6 +947,7 @@ describe('Client socket.io', function() {
       {
         lazy: true,
       },
+      SocketIOClientAdapter,
     );
     expect(client.client).to.be.null;
 
@@ -909,6 +997,7 @@ describe('Client socket.io', function() {
         lazy: true,
         connectionParams,
       },
+      SocketIOClientAdapter,
     );
 
     let isDone = false,
@@ -980,9 +1069,13 @@ describe('Client socket.io', function() {
         done();
       }
     });
-    client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
-      reconnect: true,
-    });
+    client = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        reconnect: true,
+      },
+      SocketIOClientAdapter,
+    );
     originalClient = client.client;
   });
 
@@ -1004,9 +1097,13 @@ describe('Client socket.io', function() {
         }
       });
     });
-    client = new SubscriptionClient(`http://localhost:${RAW_TEST_PORT}/`, {
-      reconnect: true,
-    });
+    client = new SubscriptionClient(
+      `http://localhost:${RAW_TEST_PORT}/`,
+      {
+        reconnect: true,
+      },
+      SocketIOClientAdapter,
+    );
 
     sub = client
       .request({
@@ -1027,9 +1124,13 @@ describe('Client socket.io', function() {
   it('should throw an exception when trying to request when socket is closed', function(done) {
     let client: SubscriptionClient = null;
 
-    client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`, {
-      reconnect: true,
-    });
+    client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      {
+        reconnect: true,
+      },
+      SocketIOClientAdapter,
+    );
 
     setTimeout(() => {
       client.client.close();
@@ -1051,22 +1152,30 @@ describe('Client socket.io', function() {
     }, 1000);
   });
 
-  // it('should emit event when an websocket error occurs', function (done) {
-  //   const client = new SubscriptionClient(`http://localhost:${ERROR_TEST_PORT}/`);
+  // it('should emit event when an websocket error occurs', function(done) {
+  //   const client = new SubscriptionClient(
+  //     `http://localhost:${ERROR_TEST_PORT}/`,
+  //     null,
+  //     SocketIOClientAdapter,
+  //   );
 
-  //   client.request({
-  //     query: `subscription useInfo{
+  //   client
+  //     .request({
+  //       query: `subscription useInfo{
   //       invalid
   //     }`,
-  //     variables: {},
-  //   }).subscribe({
-  //     next: () => {
-  //       assert(false);
-  //     },
-  //   });
+  //       variables: {},
+  //     })
+  //     .subscribe({
+  //       next: () => {
+  //         assert(false);
+  //       },
+  //     });
 
   //   client.onError((err: Error) => {
-  //     expect(err.message).to.be.equal(`connect ECONNREFUSED 127.0.0.1:${ERROR_TEST_PORT}`);
+  //     expect(err.message).to.be.equal(
+  //       `connect ECONNREFUSED 127.0.0.1:${ERROR_TEST_PORT}`,
+  //     );
   //     done();
   //   });
   // });
@@ -1083,6 +1192,7 @@ describe('Client socket.io', function() {
         reconnect: true,
         reconnectionAttempts: 2,
       },
+      SocketIOClientAdapter,
     );
     const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
 
@@ -1100,6 +1210,7 @@ describe('Client socket.io', function() {
         reconnect: true,
         reconnectionAttempts: 2,
       },
+      SocketIOClientAdapter,
     );
     const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
     wsServer.on('connection', (connection: any) => {
@@ -1126,6 +1237,7 @@ describe('Client socket.io', function() {
         reconnect: true,
         reconnectionAttempts: 2,
       },
+      SocketIOClientAdapter,
     );
     const connectSpy = sinon.spy(subscriptionsClient as any, 'connect');
     let connections = 0;
@@ -1160,6 +1272,7 @@ describe('Client socket.io', function() {
     const subscriptionsClient = new SubscriptionClient(
       `http://localhost:${KEEP_ALIVE_TEST_PORT}/`,
       { timeout: 600 },
+      SocketIOClientAdapter,
     );
     const originalOnMessage = subscriptionsClient.client.onmessage;
     subscriptionsClient.client.onmessage = (dataReceived: any) => {
@@ -1185,6 +1298,7 @@ describe('Client socket.io', function() {
     const subscriptionsClient = new SubscriptionClient(
       `http://localhost:${KEEP_ALIVE_TEST_PORT}/`,
       { timeout: 600 },
+      SocketIOClientAdapter,
     );
     const checkConnectionSpy = sinon.spy(
       subscriptionsClient as any,
@@ -1209,6 +1323,8 @@ describe('Client socket.io', function() {
   it('should take care of invalid message received', done => {
     const subscriptionsClient = new SubscriptionClient(
       `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     const originalOnMessage = subscriptionsClient.client.onmessage;
     const dataToSend = JSON.stringify({ type: 'invalid' });
@@ -1222,6 +1338,8 @@ describe('Client socket.io', function() {
   it('should throw if received data is not JSON-parseable', done => {
     const subscriptionsClient = new SubscriptionClient(
       `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     const originalOnMessage = subscriptionsClient.client.onmessage;
     const dataToSend = 'invalid';
@@ -1235,6 +1353,8 @@ describe('Client socket.io', function() {
   it('should delete operation when receive a GQL_COMPLETE', done => {
     const subscriptionsClient = new SubscriptionClient(
       `http://localhost:${RAW_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     subscriptionsClient.operations['1'] = {
       options: {
@@ -1264,6 +1384,7 @@ describe('Client socket.io', function() {
         reconnect: true,
         reconnectionAttempts: 1,
       },
+      SocketIOClientAdapter,
     );
     const tryReconnectSpy = sinon.spy(
       subscriptionsClient as any,
@@ -1313,6 +1434,7 @@ describe('Client socket.io', function() {
         reconnect: true,
         reconnectionAttempts: 1,
       },
+      SocketIOClientAdapter,
     );
     const tryReconnectSpy = sinon.spy(
       subscriptionsClient as any,
@@ -1361,6 +1483,7 @@ describe('Client socket.io', function() {
       {
         inactivityTimeout: 100,
       },
+      SocketIOClientAdapter,
     );
     const sub = subscriptionsClient
       .request({
@@ -1423,7 +1546,7 @@ describe('Server socket.io', function() {
       new SubscriptionServer(
         { execute: undefined },
         { server: httpServer },
-        'io',
+        SocketIOServerAdapter,
       );
     }).to.throw();
   });
@@ -1433,14 +1556,14 @@ describe('Server socket.io', function() {
       new SubscriptionServer(
         { subscribe: {} as any },
         { server: httpServer },
-        'io',
+        SocketIOServerAdapter,
       );
     }).to.throw();
   });
 
   it('should throw an exception when execute is missing', () => {
     expect(() => {
-      new SubscriptionServer({}, { server: httpServer }, 'io');
+      new SubscriptionServer({}, { server: httpServer }, SocketIOServerAdapter);
     }).to.throw();
   });
 
@@ -1449,7 +1572,7 @@ describe('Server socket.io', function() {
       new SubscriptionServer(
         { execute: {} as any },
         { server: httpServer },
-        'io',
+        SocketIOServerAdapter,
       );
     }).to.throw();
   });
@@ -1468,11 +1591,13 @@ describe('Server socket.io', function() {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
       `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     client.onConnected(() => {
       client
@@ -1513,11 +1638,13 @@ describe('Server socket.io', function() {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
       `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     client.onDisconnected(() => {
       done();
@@ -1555,11 +1682,13 @@ describe('Server socket.io', function() {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
       `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     client.onConnected(() => {
       let hasValue = false;
@@ -1629,11 +1758,13 @@ describe('Server socket.io', function() {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
       `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     client.onConnected(() => {
       client
@@ -1677,17 +1808,23 @@ describe('Server socket.io', function() {
         },
       },
       { server: httpServerForError },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
       `http://localhost:${ERROR_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     client.onDisconnected(spy);
   });
 
   it('should trigger onConnect when client connects and validated', done => {
-    new SubscriptionClient(`http://localhost:${EVENTS_TEST_PORT}/`);
+    new SubscriptionClient(
+      `http://localhost:${EVENTS_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     setTimeout(() => {
       assert(eventsOptions.onConnect.calledOnce);
@@ -1700,9 +1837,13 @@ describe('Server socket.io', function() {
       test: true,
     };
 
-    new SubscriptionClient(`http://localhost:${EVENTS_TEST_PORT}/`, {
-      connectionParams: connectionParams,
-    });
+    new SubscriptionClient(
+      `http://localhost:${EVENTS_TEST_PORT}/`,
+      {
+        connectionParams: connectionParams,
+      },
+      SocketIOClientAdapter,
+    );
 
     setTimeout(() => {
       assert(eventsOptions.onConnect.calledOnce);
@@ -1714,7 +1855,11 @@ describe('Server socket.io', function() {
   });
 
   it('should trigger onConnect with the request available in ConnectionContext', done => {
-    new SubscriptionClient(`http://localhost:${EVENTS_TEST_PORT}/`);
+    new SubscriptionClient(
+      `http://localhost:${EVENTS_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     setTimeout(() => {
       assert(eventsOptions.onConnect.calledOnce);
@@ -1734,6 +1879,7 @@ describe('Server socket.io', function() {
       {
         connectionCallback: connectionCallbackSpy,
       },
+      SocketIOClientAdapter,
     );
 
     setTimeout(() => {
@@ -1755,6 +1901,7 @@ describe('Server socket.io', function() {
       {
         connectionCallback: connectionCallbackSpy,
       },
+      SocketIOClientAdapter,
     );
 
     const originalOnMessage = subscriptionsClient.client.onmessage;
@@ -1784,6 +1931,8 @@ describe('Server socket.io', function() {
   it('should trigger onDisconnect when client disconnects', done => {
     const client = new SubscriptionClient(
       `http://localhost:${EVENTS_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     setTimeout(() => {
       client.client.close();
@@ -1797,6 +1946,8 @@ describe('Server socket.io', function() {
   it('should trigger onDisconnect with ConnectionContext as second argument', done => {
     const client = new SubscriptionClient(
       `http://localhost:${EVENTS_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     setTimeout(() => {
       client.client.close();
@@ -1811,6 +1962,8 @@ describe('Server socket.io', function() {
   it('should call unsubscribe when client closes the connection', done => {
     const client = new SubscriptionClient(
       `http://localhost:${EVENTS_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     const spy = sinon.spy(eventsServer as any, 'unsubscribe');
 
@@ -1842,6 +1995,8 @@ describe('Server socket.io', function() {
   it('should trigger onOperation when client subscribes', done => {
     const client = new SubscriptionClient(
       `http://localhost:${EVENTS_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     client
       .request({
@@ -1873,6 +2028,8 @@ describe('Server socket.io', function() {
   it('should trigger onOperationComplete when client unsubscribes', done => {
     const client = new SubscriptionClient(
       `http://localhost:${EVENTS_TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     const sub = client
       .request({
@@ -1911,8 +2068,16 @@ describe('Server socket.io', function() {
   });
 
   it('should send correct results to multiple clients with subscriptions', function(done) {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
-    let client1 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
+    let client1 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     let numResults = 0;
     setTimeout(() => {
@@ -1946,7 +2111,11 @@ describe('Server socket.io', function() {
         });
     }, 100);
 
-    const client11 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client11 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     let numResults1 = 0;
     setTimeout(function() {
       client11
@@ -1992,7 +2161,11 @@ describe('Server socket.io', function() {
   });
 
   it('should send a gql_data with errors message to client with invalid query', function(done) {
-    const client1 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client1 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
 
     setTimeout(function() {
       client1.client.onmessage = (message: any) => {
@@ -2030,8 +2203,16 @@ describe('Server socket.io', function() {
 
   it('should set up the proper filters when subscribing', function(done) {
     let numTriggers = 0;
-    const client3 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
-    const client4 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client3 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
+    const client4 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     setTimeout(() => {
       client3
         .request({
@@ -2103,7 +2284,11 @@ describe('Server socket.io', function() {
 
   it('correctly sets the context in onOperation', function(done) {
     const CTX = 'testContext';
-    const client3 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client3 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     client3
       .request({
         query: `subscription context {
@@ -2132,7 +2317,11 @@ describe('Server socket.io', function() {
   });
 
   it('passes through webSocketRequest to onOperation', function(done) {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     client
       .request({
         query: `
@@ -2153,7 +2342,11 @@ describe('Server socket.io', function() {
   });
 
   it('does not send more subscription data after client unsubscribes', function(done) {
-    const client4 = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client4 = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     let sub: any;
 
     setTimeout(() => {
@@ -2264,7 +2457,11 @@ describe('Server socket.io', function() {
   });
 
   it('sends back any type of error', function(done) {
-    const client = new SubscriptionClient(`http://localhost:${TEST_PORT}/`);
+    const client = new SubscriptionClient(
+      `http://localhost:${TEST_PORT}/`,
+      null,
+      SocketIOClientAdapter,
+    );
     client
       .request({
         query: `invalid useInfo{
@@ -2368,7 +2565,7 @@ describe('Client<->Server Flow socket.io', () => {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
@@ -2376,6 +2573,7 @@ describe('Client<->Server Flow socket.io', () => {
       {
         inactivityTimeout: 100,
       },
+      SocketIOClientAdapter,
     );
     let isFirstTime = true;
 
@@ -2429,11 +2627,13 @@ describe('Client<->Server Flow socket.io', () => {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
       `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     let isFirstTime = true;
 
@@ -2482,11 +2682,13 @@ describe('Client<->Server Flow socket.io', () => {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const client = new SubscriptionClient(
       `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     let isFirstTime = true;
 
@@ -2540,12 +2742,14 @@ describe('Client<->Server Flow socket.io', () => {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const createClientAndSubscribe = (): Promise<any> => {
       const client = new SubscriptionClient(
         `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+        null,
+        SocketIOClientAdapter,
       );
       let sub: any = null;
       const cbSpy = sinon.spy();
@@ -2634,12 +2838,14 @@ describe('Client<->Server Flow socket.io', () => {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const createClientAndSubscribe = (): Promise<any> => {
       const client = new SubscriptionClient(
         `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+        null,
+        SocketIOClientAdapter,
       );
       const cbSpy = sinon.spy();
 
@@ -2724,7 +2930,7 @@ describe('Client<->Server Flow socket.io', () => {
         server,
         path: '/',
       },
-      'io',
+      SocketIOServerAdapter,
     );
 
     const firstSubscriptionSpy = sinon.spy();
@@ -2732,6 +2938,8 @@ describe('Client<->Server Flow socket.io', () => {
     // Create the client
     const client = new SubscriptionClient(
       `http://localhost:${SERVER_EXECUTOR_TESTS_PORT}/`,
+      null,
+      SocketIOClientAdapter,
     );
     client.onConnected(() => {
       // Subscribe to a regular query

@@ -8,11 +8,11 @@ export enum State {
 }
 
 export type ConnectionHandler = (
-  socket: SocketAdapterInterface,
+  socket: ISocketAdapter,
   request: IncomingMessage,
 ) => void;
 
-export type SocketAdapterInterface = {
+export type ISocketAdapter = {
   protocol: string;
   state: State;
   close(code?: number, data?: string): void;
@@ -21,10 +21,14 @@ export type SocketAdapterInterface = {
   send(data: any, cb?: (err: Error) => void): void;
 };
 
-export type AdapterInterface = {
+export type IServerAdapter = {
   on(event: string, connectionHandler: ConnectionHandler): void;
 
   removeListener(event: string, connectionHandler: ConnectionHandler): void;
 
   close(): void;
 };
+
+export interface IServerAdapterConstructor {
+  new (options?: any): IServerAdapter;
+}

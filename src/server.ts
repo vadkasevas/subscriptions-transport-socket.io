@@ -18,11 +18,12 @@ import { parseLegacyProtocolMessage } from './legacy/parse-legacy-protocol';
 import { IncomingMessage } from 'http';
 
 import {
-  AdapterInterface,
-  SocketAdapterInterface,
+  IServerAdapter,
+  ISocketAdapter,
   State,
-} from './adapters/adapterInterface';
-import { WebsocketAdapter } from './adapters/websocketAdapter';
+  IServerAdapterConstructor,
+} from './server-adapters/serverAdapterInterface';
+import { NativeServerAdapter } from './server-adapters/nativeServerAdapter';
 
 export type ExecutionIterator = AsyncIterator<ExecutionResult>;
 
@@ -39,7 +40,7 @@ export interface ExecutionParams<TContext = any> {
 export type ConnectionContext = {
   initPromise?: Promise<any>;
   isLegacy: boolean;
-  socket: SocketAdapterInterface;
+  socket: ISocketAdapter;
   request: IncomingMessage;
   operations: {
     [opId: string]: ExecutionIterator;
@@ -105,7 +106,8 @@ export class SubscriptionServer {
   private onConnect: Function;
   private onDisconnect: Function;
 
-  private wsServer: AdapterInterface;
+  private wsImpl: IServerAdapterConstructor;
+  private wsServer: IServerAdapter;
   private execute: ExecuteFunction;
   private subscribe: SubscribeFunction;
   private schema: GraphQLSchema;
@@ -117,16 +119,12 @@ export class SubscriptionServer {
   public static create(
     options: ServerOptions,
     socketOptions: any,
-    websocketLibrary: string = 'ws',
+    webSocketImpl?: any,
   ) {
-    return new SubscriptionServer(options, socketOptions, websocketLibrary);
+    return new SubscriptionServer(options, socketOptions, webSocketImpl);
   }
 
-  constructor(
-    options: ServerOptions,
-    socketOptions: any,
-    websocketLibrary: string = 'ws',
-  ) {
+  constructor(options: ServerOptions, socketOptions: any, webSocketImpl?: any) {
     const {
       onOperation,
       onOperationComplete,
@@ -134,6 +132,8 @@ export class SubscriptionServer {
       onDisconnect,
       keepAlive,
     } = options;
+
+    this.wsImpl = webSocketImpl || NativeServerAdapter;
 
     this.specifiedRules = options.validationRules || specifiedRules;
     this.loadExecutor(options);
@@ -145,10 +145,11 @@ export class SubscriptionServer {
     this.keepAlive = keepAlive;
 
     // Init and connect websocket server to http
-    this.wsServer = new WebsocketAdapter(websocketLibrary, socketOptions);
+    // this.wsServer = new WebsocketAdapter(websocketLibrary, socketOptions);
+    this.wsServer = new this.wsImpl(socketOptions);
 
     const connectionHandler = (
-      socket: SocketAdapterInterface,
+      socket: ISocketAdapter,
       request: IncomingMessage,
     ) => {
       // Add `upgradeReq` to the socket object to support old API, without creating a memory leak
@@ -197,13 +198,7 @@ export class SubscriptionServer {
       };
 
       socket.on('error', connectionClosedHandler);
-      // Todo: Implement a better server interface -.-
-      if (websocketLibrary === 'io') {
-        socket.on('disconnect', connectionClosedHandler);
-      } else {
-        socket.on('close', connectionClosedHandler);
-      }
-
+      socket.on('close', connectionClosedHandler);
       socket.on('message', this.onMessage(connectionContext));
     };
 
@@ -214,7 +209,7 @@ export class SubscriptionServer {
     };
   }
 
-  public get server(): AdapterInterface {
+  public get server(): IServerAdapter {
     return this.wsServer;
   }
 

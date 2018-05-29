@@ -1,13 +1,13 @@
 import * as io from 'socket.io';
 
 import {
-  AdapterInterface,
+  IServerAdapter,
   ConnectionHandler,
-  SocketAdapterInterface,
+  ISocketAdapter,
   State,
-} from './adapterInterface';
+} from './serverAdapterInterface';
 
-class SocketAdapter implements SocketAdapterInterface {
+class SocketAdapter implements ISocketAdapter {
   private _socket: io.Socket;
 
   constructor(socket: io.Socket) {
@@ -32,6 +32,10 @@ class SocketAdapter implements SocketAdapterInterface {
   }
 
   public on(event: string, connectionHandler: ConnectionHandler) {
+    // Event close needs to be translated to disconnect for socket.io
+    if (event === 'close') {
+      event = 'disconnect';
+    }
     this._socket.on(event, connectionHandler);
   }
 
@@ -48,7 +52,7 @@ class SocketAdapter implements SocketAdapterInterface {
   }
 }
 
-export class SocketIOAdapter implements AdapterInterface {
+export class SocketIOServerAdapter implements IServerAdapter {
   private io: SocketIO.Server;
   private socket: SocketAdapter;
 
