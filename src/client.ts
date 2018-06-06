@@ -92,6 +92,7 @@ export class SubscriptionClient {
   private inactivityTimeoutId: any;
   private closedByUser: boolean;
   private wsImpl: IClientAdaterConstructor;
+  private wsOpts: Object;
   private wasKeepAliveReceived: boolean;
   private tryReconnectTimeoutId: any;
   private checkConnectionIntervalId: any;
@@ -99,7 +100,12 @@ export class SubscriptionClient {
   private middlewares: Middleware[];
   private maxConnectTimeGenerator: any;
 
-  constructor(url: string, options?: ClientOptions, webSocketImpl?: any) {
+  constructor(
+    url: string,
+    options?: ClientOptions,
+    webSocketImpl?: any,
+    wsOpts?: Object,
+  ) {
     const {
       connectionCallback = undefined,
       connectionParams = {},
@@ -112,6 +118,7 @@ export class SubscriptionClient {
       options || {};
 
     this.wsImpl = webSocketImpl || NativeClientAdapter;
+    this.wsOpts = wsOpts;
 
     if (!this.wsImpl) {
       throw new Error(
@@ -563,7 +570,7 @@ export class SubscriptionClient {
   }
 
   private connect() {
-    this.client = new this.wsImpl(this.url, GRAPHQL_WS);
+    this.client = new this.wsImpl(this.url, GRAPHQL_WS, this.wsOpts);
 
     this.checkMaxConnectTimeout();
 

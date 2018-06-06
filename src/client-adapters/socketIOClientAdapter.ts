@@ -3,16 +3,24 @@ import { IClientAdapter, ReadyState } from './clientAdapterInterface';
 
 export class SocketIOClientAdapter implements IClientAdapter {
   private socket: SocketIOClient.Socket;
+  private opts: SocketIOClient.ConnectOpts;
   private _onmessage: Function;
 
-  constructor(url: string, protocol: string) {
-    this.socket = io(url, {
-      transports: ['websocket'],
-      forceNew: true,
+  constructor(
+    url: string,
+    protocol: string,
+    opts?: SocketIOClient.ConnectOpts,
+  ) {
+    this.opts = {
       query: {
         protocol: protocol,
       },
-    });
+      transports: ['websocket'],
+      forceNew: true,
+      ...opts,
+    };
+
+    this.socket = io(url, this.opts);
   }
 
   public get readyState() {

@@ -16,5 +16,5 @@ export interface IClientAdapter {
 }
 
 export interface IClientAdaterConstructor {
-  new (url: string, protocol: string): IClientAdapter;
+  new (url: string, protocol: string, opts?: Object): IClientAdapter;
 }
