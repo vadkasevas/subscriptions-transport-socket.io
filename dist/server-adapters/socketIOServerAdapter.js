@@ -52,7 +52,7 @@ var SocketAdapter = (function () {
 var SocketIOServerAdapter = (function () {
     function SocketIOServerAdapter(options) {
         var ioInstance = options.ioInstance, server = options.server;
-        this.io = ioInstance || io(server);
+        this.io = ioInstance || io(server, { path: options.path });
     }
     SocketIOServerAdapter.prototype.on = function (event, connectionHandler) {
         var _this = this;

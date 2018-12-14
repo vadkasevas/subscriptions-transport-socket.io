@@ -58,7 +58,7 @@ export class SocketIOServerAdapter implements IServerAdapter {
 
   constructor(options?: any) {
     const { ioInstance, server } = options;
-    this.io = ioInstance || io(server);
+    this.io = ioInstance || io(server, { path: options.path });
   }
 
   public on(event: string, connectionHandler: ConnectionHandler) {
