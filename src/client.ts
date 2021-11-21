@@ -423,7 +423,7 @@ export class SubscriptionClient {
     }
 
     if (
-      (!isString(query) && !getOperationAST(query, operationName)) ||
+      (!isString(query) && !getOperationAST(query as DocumentNode, operationName)) ||
       (operationName && !isString(operationName)) ||
       (variables && !isObject(variables))
     ) {

@@ -1,15 +1,16 @@
 import * as io from 'socket.io-client';
+import SocketIOClient from 'socket.io-client';
 import { IClientAdapter, ReadyState } from './clientAdapterInterface';
 
 export class SocketIOClientAdapter implements IClientAdapter {
-  private socket: io.Socket;
-  private opts: io.ConnectOpts;
+  private socket: SocketIOClient.Socket;
+  private opts: SocketIOClient.ConnectOpts;
   private _onmessage: Function;
 
   constructor(
     url: string,
     protocol: string,
-    opts?: io.ConnectOpts,
+    opts?: SocketIOClient.ConnectOpts,
   ) {
     this.opts = {
       query: {
